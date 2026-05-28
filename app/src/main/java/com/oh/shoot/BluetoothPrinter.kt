@@ -174,4 +174,35 @@ object BluetoothPrinter {
             }
         }
     }
+
+    @SuppressLint("MissingPermission")
+    suspend fun testConnection(
+        context: Context,
+        device: BluetoothDevice
+    ): Boolean = withContext(Dispatchers.IO) {
+        var socket: BluetoothSocket? = null
+        try {
+            socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+            val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            val adapter = bluetoothManager?.adapter
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
+                    adapter?.cancelDiscovery()
+                }
+            } else {
+                adapter?.cancelDiscovery()
+            }
+
+            socket.connect()
+            true
+        } catch (_: IOException) {
+            false
+        } finally {
+            try {
+                socket?.close()
+            } catch (_: IOException) {
+            }
+        }
+    }
 }

@@ -42,6 +42,9 @@ fun AppNavGraph(
             CaptureScreen(
                 maxPhotos = uiState.selectedLayout,
                 currentPhotoIndex = uiState.currentShotIndex,
+                cameraFacingFront = uiState.appSettings.cameraFacingFront,
+                mirrorPreview = uiState.appSettings.mirrorPreview,
+                soundsEnabled = uiState.appSettings.soundsEnabled,
                 onPhotoCaptured = { bitmap ->
                     viewModel.savePhoto(uiState.currentShotIndex, bitmap)
                 },
@@ -83,15 +86,20 @@ fun AppNavGraph(
             val printerState by viewModel.printerState.collectAsState()
             OutputScreen(
                 photos = uiState.capturedPhotos,
+                selectedLayout = uiState.selectedLayout,
                 headerText = uiState.appSettings.headerText,
+                customLogoUri = uiState.appSettings.customLogoUri,
                 footerText = uiState.appSettings.footerText,
                 printerState = printerState,
                 onBack = {
                     navController.popBackStack()
                 },
                 onPrintConfirmed = {
-                    viewModel.printSession()
-                    navController.navigate(Screen.Done.route)
+                    viewModel.printSession { success ->
+                        if (success) {
+                            navController.navigate(Screen.Done.route)
+                        }
+                    }
                 }
             )
         }

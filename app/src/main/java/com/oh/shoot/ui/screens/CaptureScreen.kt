@@ -21,12 +21,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.oh.shoot.audio.CaptureSoundPlayer
 import com.oh.shoot.camera.CameraManager
 import com.oh.shoot.ui.theme.*
 import kotlinx.coroutines.delay
@@ -36,6 +39,9 @@ import kotlinx.coroutines.launch
 fun CaptureScreen(
     maxPhotos: Int,
     currentPhotoIndex: Int,
+    cameraFacingFront: Boolean,
+    mirrorPreview: Boolean,
+    soundsEnabled: Boolean,
     onPhotoCaptured: (Bitmap) -> Unit,
     onAllPhotosCaptured: () -> Unit,
     onBack: () -> Unit
@@ -46,9 +52,11 @@ fun CaptureScreen(
     
     val cameraManager = remember { CameraManager(context) }
     val previewView = remember { PreviewView(context) }
+    val soundPlayer = remember { CaptureSoundPlayer(context) }
 
     DisposableEffect(Unit) {
         onDispose {
+            soundPlayer.release()
             cameraManager.shutdown()
         }
     }
@@ -67,7 +75,7 @@ fun CaptureScreen(
     var countdownValue by remember { mutableIntStateOf(0) }
     var isCapturing by remember { mutableStateOf(false) }
     var triggerFlash by remember { mutableStateOf(false) }
-    
+
     val currentFlashAlpha by animateFloatAsState(
         targetValue = if (triggerFlash) 1f else 0f,
         animationSpec = tween(150),
@@ -75,9 +83,14 @@ fun CaptureScreen(
         finishedListener = { if (it == 1f) triggerFlash = false }
     )
 
+    val cameraSelector = remember(cameraFacingFront) {
+        if (cameraFacingFront) androidx.camera.core.CameraSelector.DEFAULT_FRONT_CAMERA 
+        else androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
+    }
+
     if (hasPermission) {
-        LaunchedEffect(previewView) {
-            cameraManager.startCamera(lifecycleOwner, previewView)
+        LaunchedEffect(previewView, cameraSelector) {
+            cameraManager.startCamera(lifecycleOwner, previewView, cameraSelector)
         }
     }
 
@@ -85,7 +98,15 @@ fun CaptureScreen(
         if (hasPermission) {
             AndroidView(
                 factory = { previewView },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (mirrorPreview) {
+                            Modifier.graphicsLayer(scaleX = -1f)
+                        } else {
+                            Modifier
+                        }
+                    )
             )
         }
 
@@ -109,10 +130,16 @@ fun CaptureScreen(
                         // Countdown 3, 2, 1
                         for (i in 3 downTo 1) {
                             countdownValue = i
+                            if (soundsEnabled) {
+                                soundPlayer.playTick()
+                            }
                             delay(1000)
                         }
                         countdownValue = 0
                         triggerFlash = true
+                        if (soundsEnabled) {
+                            soundPlayer.playShutter()
+                        }
                         cameraManager.takePhoto { bitmap ->
                             onPhotoCaptured(bitmap)
                             isCapturing = false

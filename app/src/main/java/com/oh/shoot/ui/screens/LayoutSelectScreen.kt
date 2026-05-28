@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -15,84 +18,86 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.oh.shoot.ui.theme.*
+
+data class LayoutOption(
+    val id: Int,
+    val name: String,
+    val columns: Int,
+    val rows: Int,
+    val photoCount: Int
+)
+
+private val layoutOptions = listOf(
+    LayoutOption(id = 1, name = "1 Photo", columns = 1, rows = 1, photoCount = 1),
+    LayoutOption(id = 2, name = "2 Strip", columns = 1, rows = 2, photoCount = 2),
+    LayoutOption(id = 3, name = "3 Strip", columns = 1, rows = 3, photoCount = 3),
+    LayoutOption(id = 4, name = "2x2 Grid", columns = 2, rows = 2, photoCount = 4)
+)
 
 @Composable
 fun LayoutSelectScreen(
     onLayoutSelected: (Int) -> Unit
 ) {
-    var selectedId by remember { mutableIntStateOf(1) }
+    var selectedId by remember { mutableIntStateOf(layoutOptions.first().id) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
-            .padding(32.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Choose your layout",
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.titleLarge,
             color = AccentCream
         )
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        Row(
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 128.dp),
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            userScrollEnabled = false
         ) {
-            LayoutCard(
-                modifier = Modifier.weight(1f),
-                title = "1 Photo",
-                isSelected = selectedId == 1,
-                onClick = { selectedId = 1 }
-            ) {
-                LayoutDiagram(1)
-            }
-            LayoutCard(
-                modifier = Modifier.weight(1f),
-                title = "2 Photos",
-                isSelected = selectedId == 2,
-                onClick = { selectedId = 2 }
-            ) {
-                LayoutDiagram(2)
-            }
-            LayoutCard(
-                modifier = Modifier.weight(1f),
-                title = "Strip",
-                isSelected = selectedId == 3,
-                onClick = { selectedId = 3 }
-            ) {
-                LayoutDiagram(3)
-            }
-            LayoutCard(
-                modifier = Modifier.weight(1f),
-                title = "2x2 Grid",
-                isSelected = selectedId == 4,
-                onClick = { selectedId = 4 }
-            ) {
-                LayoutDiagram(4)
+            items(layoutOptions, key = { it.id }) { option ->
+                LayoutCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    title = option.name,
+                    isSelected = selectedId == option.id,
+                    onClick = { selectedId = option.id }
+                ) {
+                    LayoutDiagram(option)
+                }
             }
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
+        val selectedOption = layoutOptions.firstOrNull { it.id == selectedId } ?: layoutOptions.first()
+
         Button(
-            onClick = { onLayoutSelected(selectedId) },
+            onClick = { onLayoutSelected(selectedOption.photoCount) },
             modifier = Modifier
-                .fillMaxWidth(0.5f)
-                .height(64.dp),
+                .fillMaxWidth()
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .widthIn(max = 200.dp)
+                .height(50.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = AccentGold,
                 contentColor = Surface
             ),
             shape = RoundedCornerShape(32.dp)
         ) {
-            Text("CONTINUE", style = MaterialTheme.typography.headlineMedium)
+            Text("CONTINUE", fontSize = 18.sp)
         }
+        Spacer(modifier = Modifier.height(6.dp))
     }
 }
 
@@ -116,97 +121,48 @@ fun LayoutCard(
                 shape = RoundedCornerShape(16.dp)
             )
             .clickable { onClick() }
-            .padding(16.dp),
+            .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
-                .aspectRatio(0.7f)
+                .aspectRatio(0.95f)
                 .fillMaxWidth()
         ) {
             content()
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(text = title, color = TextPrimary, style = MaterialTheme.typography.bodyLarge)
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = title,
+            color = TextPrimary,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
 @Composable
-fun LayoutDiagram(id: Int) {
+fun LayoutDiagram(option: LayoutOption) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(8.dp)
+            .padding(4.dp)
     ) {
-        when (id) {
-            1 -> Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Surface2)
-                    .border(1.dp, TextMuted)
-            )
-            2 -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .background(Surface2)
-                        .border(1.dp, TextMuted))
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .background(Surface2)
-                        .border(1.dp, TextMuted))
-            }
-            3 -> Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .background(Surface2)
-                        .border(1.dp, TextMuted))
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .background(Surface2)
-                        .border(1.dp, TextMuted))
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .background(Surface2)
-                        .border(1.dp, TextMuted))
-            }
-            4 -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(Surface2)
-                            .border(1.dp, TextMuted))
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(Surface2)
-                            .border(1.dp, TextMuted))
-                }
-                Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(Surface2)
-                            .border(1.dp, TextMuted))
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(Surface2)
-                            .border(1.dp, TextMuted))
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            repeat(option.rows) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    repeat(option.columns) {
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(Surface2)
+                                .border(1.dp, TextMuted)
+                        )
+                    }
                 }
             }
         }

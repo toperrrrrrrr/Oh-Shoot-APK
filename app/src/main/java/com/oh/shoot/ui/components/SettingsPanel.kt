@@ -59,6 +59,14 @@ fun SettingsPanel(
             }
         }
 
+        val logoPickerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent()
+        ) { uri ->
+            if (uri != null) {
+                onSettingsChanged(settings.copy(customLogoUri = uri.toString()))
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -124,7 +132,7 @@ fun SettingsPanel(
             // Bluetooth Printer Row
             SettingRow(label = "Use Bluetooth Printer") {
                 Switch(
-                    checked = settings.useBluetoothPrinter && hasBtPermission,
+                    checked = settings.useBluetoothPrinter,
                     onCheckedChange = { checked ->
                         if (checked) {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasBtPermission) {
@@ -139,6 +147,126 @@ fun SettingsPanel(
                 )
             }
 
+            SettingRow(label = "Capture Sounds") {
+                Switch(
+                    checked = settings.soundsEnabled,
+                    onCheckedChange = { onSettingsChanged(settings.copy(soundsEnabled = it)) }
+                )
+            }
+
+            // Paper Width
+            SettingRow(label = "Paper Width (80mm)") {
+                Switch(
+                    checked = settings.paperWidth80mm,
+                    onCheckedChange = { onSettingsChanged(settings.copy(paperWidth80mm = it)) }
+                )
+            }
+
+            // Auto Cut
+            SettingRow(label = "Auto Cut Paper") {
+                Switch(
+                    checked = settings.autoCut,
+                    onCheckedChange = { onSettingsChanged(settings.copy(autoCut = it)) }
+                )
+            }
+
+            // Default Copies
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "Default Copies", style = MaterialTheme.typography.bodyLarge)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { 
+                        onSettingsChanged(settings.copy(defaultCopies = (settings.defaultCopies - 1).coerceAtLeast(1))) 
+                    }) {
+                        Icon(Icons.Default.Remove, contentDescription = "Decrease")
+                    }
+                    Text(
+                        text = settings.defaultCopies.toString(),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    IconButton(onClick = { 
+                        onSettingsChanged(settings.copy(defaultCopies = (settings.defaultCopies + 1).coerceAtMost(5))) 
+                    }) {
+                        Icon(Icons.Default.Add, contentDescription = "Increase")
+                    }
+                }
+            }
+
+            // Business Mode
+            var expandedMode by remember { mutableStateOf(false) }
+            val modes = listOf("Rental", "Vendo", "Demo")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "Business Mode", style = MaterialTheme.typography.bodyLarge)
+                Box {
+                    TextButton(onClick = { expandedMode = true }) {
+                        Text(text = settings.businessMode, style = MaterialTheme.typography.bodyLarge, color = AccentGold)
+                    }
+                    DropdownMenu(
+                        expanded = expandedMode,
+                        onDismissRequest = { expandedMode = false }
+                    ) {
+                        modes.forEach { mode ->
+                            DropdownMenuItem(
+                                text = { Text(mode) },
+                                onClick = {
+                                    onSettingsChanged(settings.copy(businessMode = mode))
+                                    expandedMode = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("Custom Print Logo", style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { logoPickerLauncher.launch("image/*") },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(if (settings.customLogoUri != null) "Change Logo" else "Upload Logo")
+                }
+                if (settings.customLogoUri != null) {
+                    OutlinedButton(
+                        onClick = { onSettingsChanged(settings.copy(customLogoUri = null)) }
+                    ) {
+                        Text("Clear")
+                    }
+                }
+            }
+
+            if (settings.customLogoUri != null) {
+                Text(
+                    text = "Logo set — used on print header instead of text",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AccentGold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Contrast
             Text("Contrast Boost: ${String.format("%.1f", settings.contrastBoost)}", style = MaterialTheme.typography.bodyLarge)
             Slider(
@@ -148,12 +276,13 @@ fun SettingsPanel(
                 steps = 15
             )
 
-            // Header Text
+            // Header Text (fallback when no logo)
             OutlinedTextField(
                 value = settings.headerText,
                 onValueChange = { onSettingsChanged(settings.copy(headerText = it)) },
-                label = { Text("Header Text") },
-                modifier = Modifier.fillMaxWidth()
+                label = { Text("Header Text (fallback)") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = settings.customLogoUri == null
             )
 
             Spacer(modifier = Modifier.height(16.dp))

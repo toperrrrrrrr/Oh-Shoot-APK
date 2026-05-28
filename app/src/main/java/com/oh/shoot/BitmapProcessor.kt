@@ -136,5 +136,33 @@ object BitmapProcessor {
 
         return rasterData
     }
+
+    /**
+     * Combines multiple bitmaps into a 2-column grid.
+     */
+    fun combineBitmapsToGrid(bitmaps: List<Bitmap>, targetWidth: Int): Bitmap {
+        if (bitmaps.isEmpty()) return Bitmap.createBitmap(targetWidth, 1, Bitmap.Config.ARGB_8888)
+        
+        val colWidth = targetWidth / 2
+        // Calculate scaled height for each bitmap to maintain aspect ratio
+        val firstBmp = bitmaps[0]
+        val scaledHeight = (colWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
+        
+        val rows = (bitmaps.size + 1) / 2
+        val totalHeight = rows * scaledHeight
+        
+        val result = Bitmap.createBitmap(targetWidth, totalHeight, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(result)
+        canvas.drawColor(android.graphics.Color.WHITE)
+        
+        bitmaps.forEachIndexed { index, bitmap ->
+            val row = index / 2
+            val col = index % 2
+            val scaled = Bitmap.createScaledBitmap(bitmap, colWidth, scaledHeight, true)
+            canvas.drawBitmap(scaled, (col * colWidth).toFloat(), (row * scaledHeight).toFloat(), null)
+        }
+        
+        return result
+    }
 }
 

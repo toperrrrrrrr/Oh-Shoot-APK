@@ -2,6 +2,12 @@ package com.oh.shoot.ui.screens
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -20,16 +26,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.oh.shoot.printer.PrinterState
 import com.oh.shoot.ui.theme.*
+import com.oh.shoot.util.ImageUtils
 
 @Composable
 fun OutputScreen(
     photos: List<Bitmap?>,
+    selectedLayout: Int,
     headerText: String,
+    customLogoUri: String?,
     footerText: String,
     printerState: PrinterState,
     onBack: () -> Unit,
     onPrintConfirmed: () -> Unit
 ) {
+    val context = LocalContext.current
+    var headerLogo by remember(customLogoUri) { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(customLogoUri) {
+        headerLogo = customLogoUri?.let { uri ->
+            ImageUtils.decodeBitmapFromUri(context, uri, 800)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -50,7 +68,7 @@ fun OutputScreen(
             is PrinterState.Ready -> "Printer Online"
             is PrinterState.Connecting -> "Connecting..."
             is PrinterState.Disconnected -> "Printer Offline"
-            is PrinterState.Error -> "Printer Error"
+            is PrinterState.Error -> "Printer Error: ${printerState.message}"
         }
         val statusColor = when (printerState) {
             is PrinterState.Ready -> Color(0xFF4CAF50)
@@ -91,25 +109,76 @@ fun OutputScreen(
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = headerText,
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                
+                if (headerLogo != null) {
+                    Image(
+                        bitmap = headerLogo!!.asImageBitmap(),
+                        contentDescription = "Print header logo",
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .padding(bottom = 8.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    Text(
+                        text = headerText,
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 24.sp,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
-                photos.filterNotNull().forEach { bitmap ->
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        contentScale = ContentScale.FillWidth
-                    )
+                val printablePhotos = photos.filterNotNull()
+                if (selectedLayout == 4 && printablePhotos.size >= 4) {
+                    val firstFour = printablePhotos.take(4)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            firstFour.take(2).forEach { bitmap ->
+                                Image(
+                                    bitmap = bitmap.asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(1f),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            firstFour.drop(2).take(2).forEach { bitmap ->
+                                Image(
+                                    bitmap = bitmap.asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(1f),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    printablePhotos.forEach { bitmap ->
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            contentScale = ContentScale.FillWidth
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
