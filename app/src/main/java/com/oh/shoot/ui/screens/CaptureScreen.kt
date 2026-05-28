@@ -1,0 +1,224 @@
+package com.oh.shoot.ui.screens
+
+import android.Manifest
+import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import com.oh.shoot.camera.CameraManager
+import com.oh.shoot.ui.theme.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+@Composable
+fun CaptureScreen(
+    maxPhotos: Int,
+    currentPhotoIndex: Int,
+    onPhotoCaptured: (Bitmap) -> Unit,
+    onAllPhotosCaptured: () -> Unit,
+    onBack: () -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
+    
+    val cameraManager = remember { CameraManager(context) }
+    val previewView = remember { PreviewView(context) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            cameraManager.shutdown()
+        }
+    }
+
+    var hasPermission by remember { mutableStateOf(false) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasPermission = granted
+    }
+    
+    LaunchedEffect(Unit) {
+        permissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+    
+    var countdownValue by remember { mutableIntStateOf(0) }
+    var isCapturing by remember { mutableStateOf(false) }
+    var triggerFlash by remember { mutableStateOf(false) }
+    
+    val currentFlashAlpha by animateFloatAsState(
+        targetValue = if (triggerFlash) 1f else 0f,
+        animationSpec = tween(150),
+        label = "flash",
+        finishedListener = { if (it == 1f) triggerFlash = false }
+    )
+
+    if (hasPermission) {
+        LaunchedEffect(previewView) {
+            cameraManager.startCamera(lifecycleOwner, previewView)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        if (hasPermission) {
+            AndroidView(
+                factory = { previewView },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // Overlays
+        CaptureOverlays(
+            currentCount = currentPhotoIndex + 1,
+            maxCount = maxPhotos
+        )
+
+        // Shutter Button
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp)
+        ) {
+            ShutterButton(
+                enabled = !isCapturing,
+                onClick = {
+                    scope.launch {
+                        isCapturing = true
+                        // Countdown 3, 2, 1
+                        for (i in 3 downTo 1) {
+                            countdownValue = i
+                            delay(1000)
+                        }
+                        countdownValue = 0
+                        triggerFlash = true
+                        cameraManager.takePhoto { bitmap ->
+                            onPhotoCaptured(bitmap)
+                            isCapturing = false
+                            if (currentPhotoIndex + 1 >= maxPhotos) {
+                                onAllPhotosCaptured()
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
+        // Countdown Overlay
+        if (countdownValue > 0) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = countdownValue.toString(),
+                    color = Color.White,
+                    fontSize = 120.sp,
+                    style = MaterialTheme.typography.displayLarge
+                )
+            }
+        }
+
+        // Flash Effect
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(currentFlashAlpha)
+                .background(Color.White)
+        )
+        
+        // Back Button
+        Text(
+            text = "Change layout",
+            color = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(24.dp)
+                .clickable { onBack() },
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
+
+@Composable
+fun ShutterButton(enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(80.dp)
+            .clip(CircleShape)
+            .background(if (enabled) AccentGold else Color.Gray)
+            .clickable(enabled = enabled) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .border(2.dp, Surface, CircleShape)
+        )
+    }
+}
+
+@Composable
+fun CaptureOverlays(currentCount: Int, maxCount: Int) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Corner Brackets
+        Canvas(modifier = Modifier.fillMaxSize().padding(48.dp)) {
+            val strokeWidth = 4.dp.toPx()
+            val lineLength = 40.dp.toPx()
+            
+            // Top Left
+            drawLine(AccentCream, start = androidx.compose.ui.geometry.Offset(0f, 0f), end = androidx.compose.ui.geometry.Offset(lineLength, 0f), strokeWidth = strokeWidth)
+            drawLine(AccentCream, start = androidx.compose.ui.geometry.Offset(0f, 0f), end = androidx.compose.ui.geometry.Offset(0f, lineLength), strokeWidth = strokeWidth)
+            
+            // Top Right
+            drawLine(AccentCream, start = androidx.compose.ui.geometry.Offset(size.width, 0f), end = androidx.compose.ui.geometry.Offset(size.width - lineLength, 0f), strokeWidth = strokeWidth)
+            drawLine(AccentCream, start = androidx.compose.ui.geometry.Offset(size.width, 0f), end = androidx.compose.ui.geometry.Offset(size.width, lineLength), strokeWidth = strokeWidth)
+            
+            // Bottom Left
+            drawLine(AccentCream, start = androidx.compose.ui.geometry.Offset(0f, size.height), end = androidx.compose.ui.geometry.Offset(lineLength, size.height), strokeWidth = strokeWidth)
+            drawLine(AccentCream, start = androidx.compose.ui.geometry.Offset(0f, size.height), end = androidx.compose.ui.geometry.Offset(0f, size.height - lineLength), strokeWidth = strokeWidth)
+            
+            // Bottom Right
+            drawLine(AccentCream, start = androidx.compose.ui.geometry.Offset(size.width, size.height), end = androidx.compose.ui.geometry.Offset(size.width - lineLength, size.height), strokeWidth = strokeWidth)
+            drawLine(AccentCream, start = androidx.compose.ui.geometry.Offset(size.width, size.height), end = androidx.compose.ui.geometry.Offset(size.width, size.height - lineLength), strokeWidth = strokeWidth)
+        }
+        
+        // Counter Badge
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(32.dp)
+                .background(Surface.copy(alpha = 0.8f), RoundedCornerShape(20.dp))
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = "$currentCount / $maxCount",
+                color = AccentCream,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
+}

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Xprinter Vendor ID: 4070 (0x0FE6) -->
+    <usb-device vendor-id="4070" />
+    <!-- Fallback for generic printer class -->
+    <usb-device class="7" />
+</resources>
