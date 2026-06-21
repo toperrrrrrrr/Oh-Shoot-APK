@@ -149,20 +149,44 @@ object BluetoothPrinter {
     ): Result<Unit> = withContext(Dispatchers.IO) {
         var socket: BluetoothSocket? = null
         try {
-            socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-            val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-            val adapter = bluetoothManager?.adapter
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
-                    adapter?.cancelDiscovery()
-                }
-            } else {
-                adapter?.cancelDiscovery()
-            }
+            var connected = false
+            for (i in 1..3) {
+                try {
+                    socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                    val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+                    val adapter = bluetoothManager?.adapter
+                    
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
+                            adapter?.cancelDiscovery()
+                        }
+                    } else {
+                        adapter?.cancelDiscovery()
+                    }
 
-            socket.connect()
-            val outputStream = socket.outputStream
+                    socket?.connect()
+                    connected = true
+                    break
+                } catch (e: IOException) {
+                    try { socket?.close() } catch (_: Exception) {}
+                    
+                    if (i == 3) {
+                        try {
+                            val m = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                            socket = m.invoke(device, 1) as BluetoothSocket
+                            socket?.connect()
+                            connected = true
+                            break
+                        } catch (e2: Exception) {
+                            // Ignore
+                        }
+                    }
+                    kotlinx.coroutines.delay(500)
+                }
+            }
+            if (!connected) throw IOException("Failed to connect")
+
+            val outputStream = socket!!.outputStream
             
             repeat(copies) { index ->
                 outputStream.write(data)
@@ -191,21 +215,48 @@ object BluetoothPrinter {
     ): Boolean = withContext(Dispatchers.IO) {
         var socket: BluetoothSocket? = null
         try {
-            socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-            val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-            val adapter = bluetoothManager?.adapter
+            kotlinx.coroutines.withTimeout(8000L) {
+                val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+                val adapter = bluetoothManager?.adapter
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
+                        adapter?.cancelDiscovery()
+                    }
+                } else {
                     adapter?.cancelDiscovery()
                 }
-            } else {
-                adapter?.cancelDiscovery()
-            }
 
-            socket.connect()
+                var connected = false
+                for (i in 1..3) {
+                    try {
+                        socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                        socket?.connect()
+                        connected = true
+                        break
+                    } catch (e: IOException) {
+                        try { socket?.close() } catch (_: Exception) {}
+                        
+                        if (i == 3) {
+                            try {
+                                val m = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                                socket = m.invoke(device, 1) as BluetoothSocket
+                                socket?.connect()
+                                connected = true
+                                break
+                            } catch (e2: Exception) {
+                                // Ignore
+                            }
+                        }
+                        kotlinx.coroutines.delay(500)
+                    }
+                }
+                if (!connected) {
+                    throw IOException("Failed to connect")
+                }
+            }
             true
-        } catch (_: IOException) {
+        } catch (_: Exception) {
             false
         } finally {
             try {

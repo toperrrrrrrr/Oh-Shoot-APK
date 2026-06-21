@@ -56,6 +56,8 @@ fun SplashScreen(onTimeout: () -> Unit) {
     var printerPairedState by remember { mutableStateOf<CheckState>(CheckState.Idle) }
     var printerConnectionState by remember { mutableStateOf<CheckState>(CheckState.Idle) }
 
+    var triggerDiagnostics by remember { mutableStateOf(0) }
+    
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -76,64 +78,66 @@ fun SplashScreen(onTimeout: () -> Unit) {
         } else {
             CheckState.Error("Bluetooth permission denied")
         }
+        // Run diagnostics again to complete the checks
+        triggerDiagnostics++
     }
 
-    fun runDiagnostics() {
-        scope.launch {
-            // 1. Check Camera
-            cameraPermissionState = CheckState.Checking
-            delay(400)
-            val hasCamera = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+    LaunchedEffect(triggerDiagnostics) {
+        if (triggerDiagnostics == 0) return@LaunchedEffect
+        
+        // 1. Check Camera
+        cameraPermissionState = CheckState.Checking
+        delay(400)
+        val hasCamera = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        
+        // 2. Check Bluetooth Connect (SDK 31+)
+        bluetoothPermissionState = CheckState.Checking
+        val hasBt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        if (hasCamera && hasBt) {
+            cameraPermissionState = CheckState.Success("Camera access granted")
+            bluetoothPermissionState = CheckState.Success("Bluetooth ready")
+        } else {
+            val list = mutableListOf<String>()
+            if (!hasCamera) list.add(Manifest.permission.CAMERA)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (!hasBt) {
+                    list.add(Manifest.permission.BLUETOOTH_CONNECT)
+                    list.add(Manifest.permission.BLUETOOTH_SCAN)
+                }
+            }
+            permissionLauncher.launch(list.toTypedArray())
+            return@LaunchedEffect
+        }
+
+        // 3. Check Paired Printer
+        printerPairedState = CheckState.Checking
+        delay(400)
+        val device = BluetoothPrinter.findPairedPrinter(context)
+        if (device != null) {
+            printerPairedState = CheckState.Success("Paired: ${device.name ?: "Unknown"}")
             
-            // 2. Check Bluetooth Connect (SDK 31+)
-            bluetoothPermissionState = CheckState.Checking
-            val hasBt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
-            } else {
-                true
-            }
-
-            if (hasCamera && hasBt) {
-                cameraPermissionState = CheckState.Success("Camera access granted")
-                bluetoothPermissionState = CheckState.Success("Bluetooth ready")
-            } else {
-                val list = mutableListOf<String>()
-                if (!hasCamera) list.add(Manifest.permission.CAMERA)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (!hasBt) {
-                        list.add(Manifest.permission.BLUETOOTH_CONNECT)
-                        list.add(Manifest.permission.BLUETOOTH_SCAN)
-                    }
-                }
-                permissionLauncher.launch(list.toTypedArray())
-                return@launch
-            }
-
-            // 3. Check Paired Printer
-            printerPairedState = CheckState.Checking
+            // 4. Test Connection
+            printerConnectionState = CheckState.Checking
             delay(400)
-            val device = BluetoothPrinter.findPairedPrinter(context)
-            if (device != null) {
-                printerPairedState = CheckState.Success("Paired: ${device.name ?: "Unknown"}")
-                
-                // 4. Test Connection
-                printerConnectionState = CheckState.Checking
-                delay(400)
-                val isConnected = BluetoothPrinter.testConnection(context, device)
-                if (isConnected) {
-                    printerConnectionState = CheckState.Success("Printer online & ready")
-                } else {
-                    printerConnectionState = CheckState.Error("Printer offline or unreachable")
-                }
+            val isConnected = BluetoothPrinter.testConnection(context, device)
+            if (isConnected) {
+                printerConnectionState = CheckState.Success("Printer online & ready")
             } else {
-                printerPairedState = CheckState.Error("No paired printer found")
-                printerConnectionState = CheckState.Idle
+                printerConnectionState = CheckState.Error("Printer offline or unreachable")
             }
+        } else {
+            printerPairedState = CheckState.Error("No paired printer found")
+            printerConnectionState = CheckState.Idle
         }
     }
 
     LaunchedEffect(Unit) {
-        runDiagnostics()
+        triggerDiagnostics++
     }
 
     // Diagnostics completed success check (non-fatal printer error is ok)
@@ -223,7 +227,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
                     }
                 } else {
                     Button(
-                        onClick = { runDiagnostics() },
+                        onClick = { triggerDiagnostics++ },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336), contentColor = Color.White),
                         modifier = Modifier
                             .fillMaxWidth(0.6f)
