@@ -192,22 +192,66 @@ fun SettingsPanel(
                 steps = 8
             )
 
-            // Bluetooth Printer Row
-            SettingRow(label = "Use Bluetooth Printer") {
-                Switch(
-                    checked = settings.useBluetoothPrinter,
-                    onCheckedChange = { checked ->
-                        if (checked) {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasBtPermission) {
-                                btPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
-                            } else {
-                                onSettingsChanged(settings.copy(useBluetoothPrinter = true))
-                            }
-                        } else {
-                            onSettingsChanged(settings.copy(useBluetoothPrinter = false))
+            // Printer Connection Type
+            var expandedPrinterType by remember { mutableStateOf(false) }
+            val printerOptions = listOf("Bluetooth", "USB", "Network")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "Printer Connection", style = MaterialTheme.typography.bodyLarge)
+                Box {
+                    TextButton(onClick = { expandedPrinterType = true }) {
+                        Text(
+                            text = settings.printerConnectionType,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = AccentGold
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expandedPrinterType,
+                        onDismissRequest = { expandedPrinterType = false }
+                    ) {
+                        printerOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    if (option == "Bluetooth" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasBtPermission) {
+                                        btPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                                    } else {
+                                        onSettingsChanged(settings.copy(printerConnectionType = option))
+                                    }
+                                    expandedPrinterType = false
+                                }
+                            )
                         }
                     }
+                }
+            }
+
+            // Network Printer Settings
+            if (settings.printerConnectionType == "Network") {
+                OutlinedTextField(
+                    value = settings.networkPrinterIp,
+                    onValueChange = { onSettingsChanged(settings.copy(networkPrinterIp = it)) },
+                    label = { Text("Network Printer IP") },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                 )
+                OutlinedTextField(
+                    value = settings.networkPrinterPort.toString(),
+                    onValueChange = { 
+                        val port = it.toIntOrNull()
+                        if (port != null) {
+                            onSettingsChanged(settings.copy(networkPrinterPort = port))
+                        }
+                    },
+                    label = { Text("Network Printer Port") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             SettingRow(label = "Capture Sounds") {

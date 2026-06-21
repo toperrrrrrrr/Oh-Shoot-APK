@@ -71,24 +71,40 @@ class SessionViewModel @Inject constructor(
 
     fun checkPrinterStatus() {
         val settings = _uiState.value.appSettings
-        if (!settings.useBluetoothPrinter) {
-            _printerState.value = printerManager.printerState.value
-            return
-        }
-
-        viewModelScope.launch(Dispatchers.IO) {
-            _printerState.value = PrinterState.Connecting
-            val device = BluetoothPrinter.findPairedPrinter(context)
-            if (device == null) {
-                _printerState.value = PrinterState.Error("No paired Bluetooth printer found")
-                return@launch
+        when (settings.printerConnectionType) {
+            "Network" -> {
+                viewModelScope.launch(Dispatchers.IO) {
+                    _printerState.value = PrinterState.Connecting
+                    val canConnect = com.oh.shoot.printer.NetworkPrinterManager.testConnection(
+                        settings.networkPrinterIp,
+                        settings.networkPrinterPort
+                    )
+                    _printerState.value = if (canConnect) {
+                        PrinterState.Ready
+                    } else {
+                        PrinterState.Error("Network printer at ${settings.networkPrinterIp}:${settings.networkPrinterPort} is unreachable")
+                    }
+                }
             }
+            "Bluetooth" -> {
+                viewModelScope.launch(Dispatchers.IO) {
+                    _printerState.value = PrinterState.Connecting
+                    val device = BluetoothPrinter.findPairedPrinter(context)
+                    if (device == null) {
+                        _printerState.value = PrinterState.Error("No paired Bluetooth printer found")
+                        return@launch
+                    }
 
-            val canConnect = BluetoothPrinter.testConnection(context, device)
-            _printerState.value = if (canConnect) {
-                PrinterState.Ready
-            } else {
-                PrinterState.Error("Bluetooth printer is not reachable")
+                    val canConnect = BluetoothPrinter.testConnection(context, device)
+                    _printerState.value = if (canConnect) {
+                        PrinterState.Ready
+                    } else {
+                        PrinterState.Error("Bluetooth printer is not reachable")
+                    }
+                }
+            }
+            else -> {
+                _printerState.value = printerManager.printerState.value
             }
         }
     }
@@ -178,35 +194,52 @@ class SessionViewModel @Inject constructor(
             }
 
             var printSucceeded = true
-            if (state.appSettings.useBluetoothPrinter) {
-                val device = BluetoothPrinter.findPairedPrinter(context)
-                if (device != null) {
-                    val result = BluetoothPrinter.printData(
-                        context = context,
-                        device = device,
+            when (state.appSettings.printerConnectionType) {
+                "Network" -> {
+                    val result = com.oh.shoot.printer.NetworkPrinterManager.printData(
+                        ipAddress = state.appSettings.networkPrinterIp,
+                        port = state.appSettings.networkPrinterPort,
                         data = data,
                         copies = state.copyCount,
                         delayBetweenCopiesMs = 1000L
                     )
                     if (result.isFailure) {
-                        Log.e("SessionViewModel", "Bluetooth print failed", result.exceptionOrNull())
-                        _printerState.value = PrinterState.Error("Bluetooth print failed: ${result.exceptionOrNull()?.message}")
+                        Log.e("SessionViewModel", "Network print failed", result.exceptionOrNull())
+                        _printerState.value = PrinterState.Error("Network print failed: ${result.exceptionOrNull()?.message}")
                         printSucceeded = false
                     }
-                } else {
-                    Log.e("SessionViewModel", "No Bluetooth printer found during printing")
-                    _printerState.value = PrinterState.Error("No paired Bluetooth printer found")
-                    printSucceeded = false
                 }
-            } else {
-                repeat(state.copyCount) { index ->
-                    val success = printerManager.print(data)
-                    if (!success) {
-                        _printerState.value = PrinterState.Error("USB Print failed. Check cable.")
+                "Bluetooth" -> {
+                    val device = BluetoothPrinter.findPairedPrinter(context)
+                    if (device != null) {
+                        val result = BluetoothPrinter.printData(
+                            context = context,
+                            device = device,
+                            data = data,
+                            copies = state.copyCount,
+                            delayBetweenCopiesMs = 1000L
+                        )
+                        if (result.isFailure) {
+                            Log.e("SessionViewModel", "Bluetooth print failed", result.exceptionOrNull())
+                            _printerState.value = PrinterState.Error("Bluetooth print failed: ${result.exceptionOrNull()?.message}")
+                            printSucceeded = false
+                        }
+                    } else {
+                        Log.e("SessionViewModel", "No Bluetooth printer found during printing")
+                        _printerState.value = PrinterState.Error("No paired Bluetooth printer found")
                         printSucceeded = false
                     }
-                    if (index < state.copyCount - 1) {
-                        kotlinx.coroutines.delay(1000L)
+                }
+                else -> {
+                    repeat(state.copyCount) { index ->
+                        val success = printerManager.print(data)
+                        if (!success) {
+                            _printerState.value = PrinterState.Error("USB Print failed. Check cable.")
+                            printSucceeded = false
+                        }
+                        if (index < state.copyCount - 1) {
+                            kotlinx.coroutines.delay(1000L)
+                        }
                     }
                 }
             }

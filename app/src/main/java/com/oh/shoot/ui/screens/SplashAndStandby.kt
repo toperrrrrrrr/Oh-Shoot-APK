@@ -47,7 +47,7 @@ sealed class CheckState {
 }
 
 @Composable
-fun SplashScreen(onTimeout: () -> Unit) {
+fun SplashScreen(appSettings: com.oh.shoot.domain.AppSettings, onTimeout: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -114,25 +114,42 @@ fun SplashScreen(onTimeout: () -> Unit) {
             return@LaunchedEffect
         }
 
-        // 3. Check Paired Printer
+        // 3. Check Printer Connection Based on Settings
         printerPairedState = CheckState.Checking
+        printerConnectionState = CheckState.Checking
         delay(400)
-        val device = BluetoothPrinter.findPairedPrinter(context)
-        if (device != null) {
-            printerPairedState = CheckState.Success("Paired: ${device.name ?: "Unknown"}")
-            
-            // 4. Test Connection
-            printerConnectionState = CheckState.Checking
-            delay(400)
-            val isConnected = BluetoothPrinter.testConnection(context, device)
-            if (isConnected) {
-                printerConnectionState = CheckState.Success("Printer online & ready")
-            } else {
-                printerConnectionState = CheckState.Error("Printer offline or unreachable")
+        when (appSettings.printerConnectionType) {
+            "Network" -> {
+                printerPairedState = CheckState.Success("Network Printer Configured")
+                val isConnected = com.oh.shoot.printer.NetworkPrinterManager.testConnection(
+                    appSettings.networkPrinterIp,
+                    appSettings.networkPrinterPort
+                )
+                if (isConnected) {
+                    printerConnectionState = CheckState.Success("Printer online at ${appSettings.networkPrinterIp}")
+                } else {
+                    printerConnectionState = CheckState.Error("Printer unreachable")
+                }
             }
-        } else {
-            printerPairedState = CheckState.Error("No paired printer found")
-            printerConnectionState = CheckState.Idle
+            "Bluetooth" -> {
+                val device = BluetoothPrinter.findPairedPrinter(context)
+                if (device != null) {
+                    printerPairedState = CheckState.Success("Paired: ${device.name ?: "Unknown"}")
+                    val isConnected = BluetoothPrinter.testConnection(context, device)
+                    if (isConnected) {
+                        printerConnectionState = CheckState.Success("Printer online & ready")
+                    } else {
+                        printerConnectionState = CheckState.Error("Printer offline or unreachable")
+                    }
+                } else {
+                    printerPairedState = CheckState.Error("No paired printer found")
+                    printerConnectionState = CheckState.Idle
+                }
+            }
+            else -> {
+                printerPairedState = CheckState.Success("USB Selected")
+                printerConnectionState = CheckState.Success("USB relies on auto-discovery")
+            }
         }
     }
 

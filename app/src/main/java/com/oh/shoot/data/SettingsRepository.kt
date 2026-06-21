@@ -30,6 +30,9 @@ class SettingsRepository @Inject constructor(
         val oldFacingFront = prefs[Keys.CAMERA_FACING_FRONT] ?: true
         val lensFacing = prefs[Keys.CAMERA_LENS_FACING] ?: if (oldFacingFront) 0 else 1
         
+        val oldBluetoothSetting = prefs[Keys.USE_BLUETOOTH_PRINTER]
+        val connectionType = prefs[Keys.PRINTER_CONNECTION_TYPE] ?: if (oldBluetoothSetting == false) "USB" else "Bluetooth"
+        
         AppSettings(
             cameraFacingFront = oldFacingFront,
             cameraLensFacing = lensFacing,
@@ -40,7 +43,10 @@ class SettingsRepository @Inject constructor(
             defaultCopies = prefs[Keys.DEFAULT_COPIES] ?: 1,
             headerText = prefs[Keys.HEADER_TEXT] ?: "OH Shoot!",
             footerText = prefs[Keys.FOOTER_TEXT] ?: "ohshoot.ph",
-            useBluetoothPrinter = prefs[Keys.USE_BLUETOOTH_PRINTER] ?: true,
+            useBluetoothPrinter = oldBluetoothSetting ?: true,
+            printerConnectionType = connectionType,
+            networkPrinterIp = prefs[Keys.NETWORK_PRINTER_IP] ?: "192.168.1.100",
+            networkPrinterPort = prefs[Keys.NETWORK_PRINTER_PORT] ?: 9100,
             businessMode = prefs[Keys.BUSINESS_MODE] ?: "Rental",
             soundsEnabled = prefs[Keys.SOUNDS_ENABLED] ?: true,
             customLogoUri = prefs[Keys.CUSTOM_LOGO_URI],
@@ -69,6 +75,9 @@ class SettingsRepository @Inject constructor(
             prefs[Keys.HEADER_TEXT] = settings.headerText
             prefs[Keys.FOOTER_TEXT] = settings.footerText
             prefs[Keys.USE_BLUETOOTH_PRINTER] = settings.useBluetoothPrinter
+            prefs[Keys.PRINTER_CONNECTION_TYPE] = settings.printerConnectionType
+            prefs[Keys.NETWORK_PRINTER_IP] = settings.networkPrinterIp
+            prefs[Keys.NETWORK_PRINTER_PORT] = settings.networkPrinterPort
             prefs[Keys.BUSINESS_MODE] = settings.businessMode
             prefs[Keys.SOUNDS_ENABLED] = settings.soundsEnabled
             prefs[Keys.PRINTED_CORNER_RADIUS] = settings.printedCornerRadius
@@ -114,5 +123,10 @@ class SettingsRepository @Inject constructor(
         val START_BUTTON_OFFSET_Y = floatPreferencesKey("start_button_offset_y")
         val START_BUTTON_SCALE = floatPreferencesKey("start_button_scale")
         val CUSTOM_LAYOUT_TEMPLATE = stringPreferencesKey("custom_layout_template")
+        
+        // Printer Connection Settings
+        val PRINTER_CONNECTION_TYPE = stringPreferencesKey("printer_connection_type")
+        val NETWORK_PRINTER_IP = stringPreferencesKey("network_printer_ip")
+        val NETWORK_PRINTER_PORT = intPreferencesKey("network_printer_port")
     }
 }

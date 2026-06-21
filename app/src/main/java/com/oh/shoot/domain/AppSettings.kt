@@ -11,7 +11,11 @@ data class AppSettings(
     val defaultCopies: Int = 1,
     val headerText: String = "OH Shoot!",
     val footerText: String = "ohshoot.ph",
+    @Deprecated("Use printerConnectionType instead", ReplaceWith("printerConnectionType == \"Bluetooth\""))
     val useBluetoothPrinter: Boolean = true,
+    val printerConnectionType: String = "Bluetooth", // "Bluetooth", "USB", "Network"
+    val networkPrinterIp: String = "192.168.1.100",
+    val networkPrinterPort: Int = 9100,
     val businessMode: String = "Rental",
     val soundsEnabled: Boolean = true,
     val customLogoUri: String? = null,

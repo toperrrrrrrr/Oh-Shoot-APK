@@ -22,7 +22,8 @@ fun AppNavGraph(
         startDestination = Screen.Splash.route
     ) {
         composable(Screen.Splash.route) { 
-            SplashScreen(onTimeout = {
+            val uiState by viewModel.uiState.collectAsState()
+            SplashScreen(appSettings = uiState.appSettings, onTimeout = {
                 navController.navigate(Screen.Standby.route) {
                     popUpTo(Screen.Splash.route) { inclusive = true }
                 }
