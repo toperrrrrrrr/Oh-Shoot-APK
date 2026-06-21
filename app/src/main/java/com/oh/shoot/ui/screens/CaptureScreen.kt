@@ -100,6 +100,7 @@ fun CaptureScreen(
     var countdownValue by remember { mutableIntStateOf(0) }
     var isCapturing by remember { mutableStateOf(false) }
     var triggerFlash by remember { mutableStateOf(false) }
+    var uvcTextureView by remember { mutableStateOf<android.view.TextureView?>(null) }
 
     val currentFlashAlpha by animateFloatAsState(
         targetValue = if (triggerFlash) 1f else 0f,
@@ -109,15 +110,19 @@ fun CaptureScreen(
     )
 
     if (hasPermission) {
-        LaunchedEffect(previewView, cameraLensFacing) {
-            cameraManager.startCamera(
-                lifecycleOwner = lifecycleOwner,
-                previewView = previewView,
-                lensFacing = cameraLensFacing,
-                onCameraFallback = {
-                    onCameraFacingChanged(0) // Fall back to front
-                }
-            )
+        if (cameraLensFacing == 2) {
+            // Native UVC driver doesn't use CameraManager.startCamera
+        } else {
+            LaunchedEffect(previewView, cameraLensFacing) {
+                cameraManager.startCamera(
+                    lifecycleOwner = lifecycleOwner,
+                    previewView = previewView,
+                    lensFacing = cameraLensFacing,
+                    onCameraFallback = {
+                        onCameraFacingChanged(0) // Fall back to front
+                    }
+                )
+            }
         }
     }
 
@@ -139,24 +144,48 @@ fun CaptureScreen(
                     .padding(20.dp),
                 contentAlignment = Alignment.Center
             ) {
-                AndroidView(
-                    factory = { previewView },
-                    modifier = Modifier
-                        .then(
-                            if (squareMode) {
-                                Modifier.aspectRatio(1f)
-                            } else {
-                                Modifier.fillMaxSize()
-                            }
-                        )
-                        .then(
-                            if (mirrorPreview) {
-                                Modifier.graphicsLayer(scaleX = -1f)
-                            } else {
-                                Modifier
-                            }
-                        )
-                )
+                if (cameraLensFacing == 2) {
+                    com.oh.shoot.camera.UvcCameraView(
+                        modifier = Modifier
+                            .then(
+                                if (squareMode) {
+                                    Modifier.aspectRatio(1f)
+                                } else {
+                                    Modifier.fillMaxSize()
+                                }
+                            )
+                            .then(
+                                if (mirrorPreview) {
+                                    Modifier.graphicsLayer(scaleX = -1f)
+                                } else {
+                                    Modifier
+                                }
+                            ),
+                        onTextureViewCreated = { uvcTextureView = it },
+                        onFallback = {
+                            onCameraFacingChanged(0)
+                        }
+                    )
+                } else {
+                    AndroidView(
+                        factory = { previewView },
+                        modifier = Modifier
+                            .then(
+                                if (squareMode) {
+                                    Modifier.aspectRatio(1f)
+                                } else {
+                                    Modifier.fillMaxSize()
+                                }
+                            )
+                            .then(
+                                if (mirrorPreview) {
+                                    Modifier.graphicsLayer(scaleX = -1f)
+                                } else {
+                                    Modifier
+                                }
+                            )
+                    )
+                }
             }
         }
 
@@ -196,15 +225,38 @@ fun CaptureScreen(
                         if (soundsEnabled) {
                             soundPlayer.playShutter()
                         }
-                        cameraManager.takePhoto(squareMode = squareMode) { bitmap ->
-                            // Restore brightness
+                        
+                        if (cameraLensFacing == 2) {
+                            var finalBitmap = uvcTextureView?.bitmap
                             activity?.window?.attributes = activity?.window?.attributes?.apply {
                                 screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
                             }
-                            onPhotoCaptured(bitmap)
+                            if (finalBitmap != null) {
+                                if (squareMode) {
+                                    val width = finalBitmap.width
+                                    val height = finalBitmap.height
+                                    val minDim = minOf(width, height)
+                                    val xOffset = (width - minDim) / 2
+                                    val yOffset = (height - minDim) / 2
+                                    finalBitmap = Bitmap.createBitmap(finalBitmap, xOffset, yOffset, minDim, minDim)
+                                }
+                                onPhotoCaptured(finalBitmap)
+                            }
                             isCapturing = false
                             if (currentPhotoIndex + 1 >= maxPhotos) {
                                 onAllPhotosCaptured()
+                            }
+                        } else {
+                            cameraManager.takePhoto(squareMode = squareMode) { bitmap ->
+                                // Restore brightness
+                                activity?.window?.attributes = activity?.window?.attributes?.apply {
+                                    screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                                }
+                                onPhotoCaptured(bitmap)
+                                isCapturing = false
+                                if (currentPhotoIndex + 1 >= maxPhotos) {
+                                    onAllPhotosCaptured()
+                                }
                             }
                         }
                     }
