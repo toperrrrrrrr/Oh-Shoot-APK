@@ -146,13 +146,15 @@ class SessionViewModel @Inject constructor(
             }
 
             // Combine photos based on layout
+            val customTemplate = com.oh.shoot.domain.CustomTemplate.fromJsonString(state.appSettings.customLayoutTemplate)
             val gridBitmap = BitmapProcessor.combineBitmapsToGrid(
                 bitmaps = photos,
                 targetWidth = printWidth,
                 type = state.selectedLayoutType,
                 cornerRadius = state.appSettings.printedCornerRadius,
                 squareMode = state.appSettings.squareMode,
-                borderDesignId = state.appSettings.borderDesignId
+                borderDesignId = state.appSettings.borderDesignId,
+                customTemplate = customTemplate
             )
 
             val raster = BitmapProcessor.convertToEscPosRasterDithered(gridBitmap, state.appSettings.contrastBoost)
@@ -254,13 +256,15 @@ class SessionViewModel @Inject constructor(
             if (photos.size < state.selectedLayout) return@launch
 
             val printWidth = if (state.appSettings.paperWidth80mm) 576 else 384
+            val customTemplate = com.oh.shoot.domain.CustomTemplate.fromJsonString(state.appSettings.customLayoutTemplate)
             val gridBitmap = BitmapProcessor.combineBitmapsToGrid(
                 bitmaps = photos,
                 targetWidth = printWidth,
                 type = state.selectedLayoutType,
                 cornerRadius = state.appSettings.printedCornerRadius,
                 squareMode = state.appSettings.squareMode,
-                borderDesignId = state.appSettings.borderDesignId
+                borderDesignId = state.appSettings.borderDesignId,
+                customTemplate = customTemplate
             )
             _uiState.update { it.copy(previewBitmap = gridBitmap) }
         }

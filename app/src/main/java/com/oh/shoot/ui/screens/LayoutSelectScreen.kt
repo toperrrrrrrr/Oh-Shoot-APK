@@ -27,7 +27,7 @@ enum class LayoutType {
     STRIP_3,
     GRID_2X2,
     GRID_2X3,
-    HYBRID
+    CUSTOM
 }
 
 data class LayoutOption(
@@ -36,20 +36,23 @@ data class LayoutOption(
     val photoCount: Int
 )
 
-private val layoutOptions = listOf(
+private fun getLayoutOptions(customPhotoCount: Int) = listOf(
     LayoutOption(LayoutType.SINGLE, "Single Photo", 1),
     LayoutOption(LayoutType.STRIP_2, "2-Photo Strip", 2),
     LayoutOption(LayoutType.STRIP_3, "3-Photo Strip", 3),
     LayoutOption(LayoutType.GRID_2X2, "2x2 Grid (1:1)", 4),
     LayoutOption(LayoutType.GRID_2X3, "2x3 Grid", 6),
-    LayoutOption(LayoutType.HYBRID, "Hybrid Grid", 3)
+    LayoutOption(LayoutType.CUSTOM, "Custom Hybrid", customPhotoCount.coerceAtLeast(1))
 )
 
 @Composable
 fun LayoutSelectScreen(
+    customPhotoCount: Int,
+    customTemplate: com.oh.shoot.domain.CustomTemplate?,
     onLayoutSelected: (LayoutOption) -> Unit,
     onCancel: () -> Unit
 ) {
+    val layoutOptions = remember(customPhotoCount) { getLayoutOptions(customPhotoCount) }
     var selectedType by remember { mutableStateOf(layoutOptions.first().type) }
 
     Column(
@@ -92,7 +95,7 @@ fun LayoutSelectScreen(
                     isSelected = selectedType == option.type,
                     onClick = { selectedType = option.type }
                 ) {
-                    LayoutDiagram(option.type)
+                    LayoutDiagram(option.type, customTemplate)
                 }
             }
         }
@@ -158,7 +161,7 @@ fun LayoutCard(
 }
 
 @Composable
-fun LayoutDiagram(type: LayoutType) {
+fun LayoutDiagram(type: LayoutType, customTemplate: com.oh.shoot.domain.CustomTemplate? = null) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -209,12 +212,35 @@ fun LayoutDiagram(type: LayoutType) {
                     }
                 }
             }
-            LayoutType.HYBRID -> {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(Modifier.weight(1.5f).fillMaxWidth().background(Surface2).border(1.dp, TextMuted))
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(Modifier.weight(1f).fillMaxHeight().background(Surface2).border(1.dp, TextMuted))
-                        Box(Modifier.weight(1f).fillMaxHeight().background(Surface2).border(1.dp, TextMuted))
+            LayoutType.CUSTOM -> {
+                if (customTemplate != null && customTemplate.frames.isNotEmpty()) {
+                    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                        val canvasW = size.width
+                        val canvasH = size.width / customTemplate.aspectRatio
+                        val startY = (size.height - canvasH) / 2f
+                        
+                        drawRect(
+                            color = Surface2, 
+                            topLeft = androidx.compose.ui.geometry.Offset(0f, startY), 
+                            size = androidx.compose.ui.geometry.Size(canvasW, canvasH)
+                        )
+                        
+                        customTemplate.frames.forEach { frame ->
+                            drawRect(
+                                color = TextMuted,
+                                topLeft = androidx.compose.ui.geometry.Offset(canvasW * frame.x, startY + canvasH * frame.y),
+                                size = androidx.compose.ui.geometry.Size(canvasW * frame.width, canvasH * frame.height),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f)
+                            )
+                        }
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Box(Modifier.weight(1.5f).fillMaxWidth().background(Surface2).border(1.dp, TextMuted))
+                        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Box(Modifier.weight(1f).fillMaxHeight().background(Surface2).border(1.dp, TextMuted))
+                            Box(Modifier.weight(1f).fillMaxHeight().background(Surface2).border(1.dp, TextMuted))
+                        }
                     }
                 }
             }

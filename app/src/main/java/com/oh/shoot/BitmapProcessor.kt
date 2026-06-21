@@ -85,7 +85,8 @@ object BitmapProcessor {
         type: LayoutType,
         cornerRadius: Float = 0f,
         squareMode: Boolean = false,
-        borderDesignId: Int = 0
+        borderDesignId: Int = 0,
+        customTemplate: com.oh.shoot.domain.CustomTemplate? = null
     ): Bitmap {
         if (bitmaps.isEmpty()) return Bitmap.createBitmap(targetWidth, 1, Bitmap.Config.ARGB_8888)
 
@@ -176,33 +177,28 @@ object BitmapProcessor {
                 }
                 result
             }
-            LayoutType.HYBRID -> {
-                // Top: 1 large landscape (full width)
-                // Bottom: 2 side-by-side
-                val topBmp = processedBitmaps[0]
-                val topHeight = (targetWidth.toDouble() / topBmp.width * topBmp.height).toInt()
+            LayoutType.CUSTOM -> {
+                if (customTemplate == null || customTemplate.frames.isEmpty()) {
+                    return Bitmap.createBitmap(targetWidth, targetWidth, Bitmap.Config.ARGB_8888)
+                }
                 
-                val bottomColWidth = targetWidth / 2
-                val bottomBmpSample = if (processedBitmaps.size > 1) processedBitmaps[1] else topBmp
-                val bottomHeight = (bottomColWidth.toDouble() / bottomBmpSample.width * bottomBmpSample.height).toInt()
-                
-                val totalHeight = topHeight + bottomHeight
+                val totalHeight = (targetWidth / customTemplate.aspectRatio).toInt()
                 val result = Bitmap.createBitmap(targetWidth, totalHeight, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(result)
                 canvas.drawColor(Color.WHITE)
                 
-                // Draw top
-                val topScaled = Bitmap.createScaledBitmap(topBmp, targetWidth, topHeight, true)
-                canvas.drawBitmap(topScaled, 0f, 0f, null)
-                
-                // Draw bottoms
-                if (processedBitmaps.size > 1) {
-                    val b1 = Bitmap.createScaledBitmap(processedBitmaps[1], bottomColWidth, bottomHeight, true)
-                    canvas.drawBitmap(b1, 0f, topHeight.toFloat(), null)
-                }
-                if (processedBitmaps.size > 2) {
-                    val b2 = Bitmap.createScaledBitmap(processedBitmaps[2], bottomColWidth, bottomHeight, true)
-                    canvas.drawBitmap(b2, bottomColWidth.toFloat(), topHeight.toFloat(), null)
+                customTemplate.frames.forEachIndexed { index, frame ->
+                    if (index < processedBitmaps.size) {
+                        val bmp = processedBitmaps[index]
+                        
+                        val pixelX = (frame.x * targetWidth).toInt()
+                        val pixelY = (frame.y * totalHeight).toInt()
+                        val pixelW = (frame.width * targetWidth).toInt()
+                        val pixelH = (frame.height * totalHeight).toInt()
+                        
+                        val scaled = Bitmap.createScaledBitmap(bmp, pixelW, pixelH, true)
+                        canvas.drawBitmap(scaled, pixelX.toFloat(), pixelY.toFloat(), null)
+                    }
                 }
                 result
             }

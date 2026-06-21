@@ -50,7 +50,13 @@ fun AppNavGraph(
             )
         }
         composable(Screen.LayoutSelect.route) { 
+            val uiState by viewModel.uiState.collectAsState()
+            val template = androidx.compose.runtime.remember(uiState.appSettings.customLayoutTemplate) {
+                com.oh.shoot.domain.CustomTemplate.fromJsonString(uiState.appSettings.customLayoutTemplate)
+            }
             LayoutSelectScreen(
+                customPhotoCount = template.frames.size.coerceAtLeast(1),
+                customTemplate = template,
                 onLayoutSelected = { option ->
                     viewModel.startSession(option.photoCount, option.type)
                     navController.navigate(Screen.Capture.route)

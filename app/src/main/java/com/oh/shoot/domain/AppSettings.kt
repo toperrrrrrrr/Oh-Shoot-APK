@@ -24,5 +24,6 @@ data class AppSettings(
     val themeName: String = "Dark",
     val startButtonOffsetX: Float = 0f,
     val startButtonOffsetY: Float = 0f,
-    val startButtonScale: Float = 1f
+    val startButtonScale: Float = 1f,
+    val customLayoutTemplate: String = ""
 )

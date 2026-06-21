@@ -6,10 +6,13 @@ Phase 2 - Customization Layer
 
 Phase 3 - Advanced Layout + Hardware Expansion
 [ ] Hybrid Drag-and-Drop Layout Designer
-[ ] Wired Printer Support (Standard network/wired, aside from the already-implemented USB support)
 [ ] External Camera Support
+
+[ ] Wired Printer Support (Standard network/wired, aside from the already-implemented USB support) 
 [ ] DSLR-booth Template Import
 
 
 
 
+
+    

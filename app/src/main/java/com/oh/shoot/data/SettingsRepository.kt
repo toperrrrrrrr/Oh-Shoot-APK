@@ -48,7 +48,8 @@ class SettingsRepository @Inject constructor(
             themeName = prefs[Keys.THEME_NAME] ?: "Dark",
             startButtonOffsetX = prefs[Keys.START_BUTTON_OFFSET_X] ?: 0f,
             startButtonOffsetY = prefs[Keys.START_BUTTON_OFFSET_Y] ?: 0f,
-            startButtonScale = prefs[Keys.START_BUTTON_SCALE] ?: 1f
+            startButtonScale = prefs[Keys.START_BUTTON_SCALE] ?: 1f,
+            customLayoutTemplate = prefs[Keys.CUSTOM_LAYOUT_TEMPLATE] ?: ""
         )
     }
 
@@ -74,6 +75,7 @@ class SettingsRepository @Inject constructor(
             prefs[Keys.START_BUTTON_OFFSET_X] = settings.startButtonOffsetX
             prefs[Keys.START_BUTTON_OFFSET_Y] = settings.startButtonOffsetY
             prefs[Keys.START_BUTTON_SCALE] = settings.startButtonScale
+            prefs[Keys.CUSTOM_LAYOUT_TEMPLATE] = settings.customLayoutTemplate
             
             if (settings.customLogoUri.isNullOrBlank()) {
                 prefs.remove(Keys.CUSTOM_LOGO_URI)
@@ -105,5 +107,6 @@ class SettingsRepository @Inject constructor(
         val START_BUTTON_OFFSET_X = floatPreferencesKey("start_button_offset_x")
         val START_BUTTON_OFFSET_Y = floatPreferencesKey("start_button_offset_y")
         val START_BUTTON_SCALE = floatPreferencesKey("start_button_scale")
+        val CUSTOM_LAYOUT_TEMPLATE = stringPreferencesKey("custom_layout_template")
     }
 }

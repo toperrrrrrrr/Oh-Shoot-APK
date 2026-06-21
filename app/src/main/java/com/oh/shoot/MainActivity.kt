@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
                 
                 var showSettings by remember { mutableStateOf(false) }
                 var isEditingStandby by remember { mutableStateOf(false) }
+                var isEditingLayoutDesigner by remember { mutableStateOf(false) }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -59,7 +60,7 @@ class MainActivity : ComponentActivity() {
                             is PrinterState.Error -> Color(0xFFF44336) // Red
                         }
 
-                        if (!isEditingStandby) {
+                        if (!isEditingStandby && !isEditingLayoutDesigner) {
                             Row(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
@@ -98,7 +99,22 @@ class MainActivity : ComponentActivity() {
                                 showSettings = false
                                 isEditingStandby = true
                             },
+                            onOpenLayoutDesigner = {
+                                showSettings = false
+                                isEditingLayoutDesigner = true
+                            },
                             onDismiss = { showSettings = false }
+                        )
+                    }
+
+                    if (isEditingLayoutDesigner) {
+                        com.oh.shoot.ui.screens.LayoutDesignerScreen(
+                            initialTemplate = com.oh.shoot.domain.CustomTemplate.fromJsonString(uiState.appSettings.customLayoutTemplate),
+                            onSave = { template ->
+                                sessionViewModel.updateSettings(uiState.appSettings.copy(customLayoutTemplate = template.toJsonString()))
+                                isEditingLayoutDesigner = false
+                            },
+                            onCancel = { isEditingLayoutDesigner = false }
                         )
                     }
                 }

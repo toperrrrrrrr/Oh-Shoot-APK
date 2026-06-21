@@ -32,6 +32,7 @@ fun SettingsPanel(
     printerState: PrinterState,
     onSettingsChanged: (AppSettings) -> Unit,
     onEditStandbyLayout: () -> Unit,
+    onOpenLayoutDesigner: () -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -360,6 +361,16 @@ fun SettingsPanel(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Edit Standby Layout (Move Start Button)")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = onOpenLayoutDesigner,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentGold)
+            ) {
+                Text("Edit Custom Hybrid Layout")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
