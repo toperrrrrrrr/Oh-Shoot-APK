@@ -1,7 +1,9 @@
 package com.oh.shoot.domain
 
 data class AppSettings(
+    @Deprecated("Use cameraLensFacing instead", ReplaceWith("cameraLensFacing == 0"))
     val cameraFacingFront: Boolean = true,
+    val cameraLensFacing: Int = 0, // 0=Front, 1=Back, 2=External
     val mirrorPreview: Boolean = true,
     val contrastBoost: Float = 1.4f,
     val paperWidth80mm: Boolean = true,

@@ -47,12 +47,12 @@ import kotlinx.coroutines.launch
 fun CaptureScreen(
     maxPhotos: Int,
     currentPhotoIndex: Int,
-    cameraFacingFront: Boolean,
+    cameraLensFacing: Int,
     mirrorPreview: Boolean,
     squareMode: Boolean,
     soundsEnabled: Boolean,
     ringLightEnabled: Boolean,
-    onCameraFacingChanged: (Boolean) -> Unit,
+    onCameraFacingChanged: (Int) -> Unit,
     onPhotoCaptured: (Bitmap) -> Unit,
     onAllPhotosCaptured: () -> Unit,
     onCancel: () -> Unit
@@ -108,14 +108,16 @@ fun CaptureScreen(
         finishedListener = { if (it == 1f) triggerFlash = false }
     )
 
-    val cameraSelector = remember(cameraFacingFront) {
-        if (cameraFacingFront) androidx.camera.core.CameraSelector.DEFAULT_FRONT_CAMERA 
-        else androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
-    }
-
     if (hasPermission) {
-        LaunchedEffect(previewView, cameraSelector) {
-            cameraManager.startCamera(lifecycleOwner, previewView, cameraSelector)
+        LaunchedEffect(previewView, cameraLensFacing) {
+            cameraManager.startCamera(
+                lifecycleOwner = lifecycleOwner,
+                previewView = previewView,
+                lensFacing = cameraLensFacing,
+                onCameraFallback = {
+                    onCameraFacingChanged(0) // Fall back to front
+                }
+            )
         }
     }
 
@@ -213,7 +215,10 @@ fun CaptureScreen(
         // Camera Switch Button
         if (!isCapturing) {
             IconButton(
-                onClick = { onCameraFacingChanged(!cameraFacingFront) },
+                onClick = { 
+                    val nextFacing = (cameraLensFacing + 1) % 3
+                    onCameraFacingChanged(nextFacing)
+                },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(bottom = 60.dp, end = 60.dp)

@@ -21,7 +21,8 @@ class CameraManager(private val context: Context) {
     fun startCamera(
         lifecycleOwner: LifecycleOwner,
         previewView: PreviewView,
-        cameraSelector: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+        lensFacing: Int = 0,
+        onCameraFallback: () -> Unit = {}
     ) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
@@ -38,16 +39,39 @@ class CameraManager(private val context: Context) {
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                 .build()
 
+            val targetSelector = when (lensFacing) {
+                1 -> CameraSelector.DEFAULT_BACK_CAMERA
+                2 -> CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_EXTERNAL).build()
+                else -> CameraSelector.DEFAULT_FRONT_CAMERA
+            }
+
             try {
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(
                     lifecycleOwner,
-                    cameraSelector,
+                    targetSelector,
                     preview,
                     imageCapture
                 )
             } catch (exc: Exception) {
-                Log.e("CameraManager", "Use case binding failed", exc)
+                Log.e("CameraManager", "Use case binding failed for lensFacing $lensFacing", exc)
+                if (lensFacing != 0) { // Fallback to front
+                    try {
+                        cameraProvider.unbindAll()
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            CameraSelector.DEFAULT_FRONT_CAMERA,
+                            preview,
+                            imageCapture
+                        )
+                        ContextCompat.getMainExecutor(context).execute {
+                            android.widget.Toast.makeText(context, "External camera unavailable. Falling back to front.", android.widget.Toast.LENGTH_LONG).show()
+                            onCameraFallback()
+                        }
+                    } catch (e2: Exception) {
+                        Log.e("CameraManager", "Fallback binding failed", e2)
+                    }
+                }
             }
 
         }, ContextCompat.getMainExecutor(context))

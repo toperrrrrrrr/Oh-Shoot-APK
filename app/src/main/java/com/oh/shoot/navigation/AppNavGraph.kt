@@ -72,13 +72,13 @@ fun AppNavGraph(
             CaptureScreen(
                 maxPhotos = uiState.selectedLayout,
                 currentPhotoIndex = uiState.currentShotIndex,
-                cameraFacingFront = uiState.appSettings.cameraFacingFront,
+                cameraLensFacing = uiState.appSettings.cameraLensFacing,
                 mirrorPreview = uiState.appSettings.mirrorPreview,
                 squareMode = uiState.appSettings.squareMode,
                 soundsEnabled = uiState.appSettings.soundsEnabled,
                 ringLightEnabled = uiState.appSettings.ringLightEnabled,
                 onCameraFacingChanged = { facing ->
-                    viewModel.updateSettings(uiState.appSettings.copy(cameraFacingFront = facing))
+                    viewModel.updateSettings(uiState.appSettings.copy(cameraLensFacing = facing))
                 },
                 onPhotoCaptured = { bitmap ->
                     viewModel.savePhoto(uiState.currentShotIndex, bitmap)

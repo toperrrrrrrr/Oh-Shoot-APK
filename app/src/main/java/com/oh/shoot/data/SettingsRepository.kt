@@ -27,8 +27,12 @@ class SettingsRepository @Inject constructor(
     private val dataStore = context.settingsDataStore
 
     val settingsFlow: Flow<AppSettings> = dataStore.data.map { prefs ->
+        val oldFacingFront = prefs[Keys.CAMERA_FACING_FRONT] ?: true
+        val lensFacing = prefs[Keys.CAMERA_LENS_FACING] ?: if (oldFacingFront) 0 else 1
+        
         AppSettings(
-            cameraFacingFront = prefs[Keys.CAMERA_FACING_FRONT] ?: true,
+            cameraFacingFront = oldFacingFront,
+            cameraLensFacing = lensFacing,
             mirrorPreview = prefs[Keys.MIRROR_PREVIEW] ?: true,
             contrastBoost = prefs[Keys.CONTRAST_BOOST] ?: 1.4f,
             paperWidth80mm = prefs[Keys.PAPER_WIDTH_80MM] ?: true,
@@ -55,7 +59,8 @@ class SettingsRepository @Inject constructor(
 
     suspend fun saveSettings(settings: AppSettings) {
         dataStore.edit { prefs ->
-            prefs[Keys.CAMERA_FACING_FRONT] = settings.cameraFacingFront
+            prefs[Keys.CAMERA_FACING_FRONT] = settings.cameraLensFacing == 0
+            prefs[Keys.CAMERA_LENS_FACING] = settings.cameraLensFacing
             prefs[Keys.MIRROR_PREVIEW] = settings.mirrorPreview
             prefs[Keys.CONTRAST_BOOST] = settings.contrastBoost
             prefs[Keys.PAPER_WIDTH_80MM] = settings.paperWidth80mm
@@ -87,6 +92,7 @@ class SettingsRepository @Inject constructor(
 
     private object Keys {
         val CAMERA_FACING_FRONT = booleanPreferencesKey("camera_facing_front")
+        val CAMERA_LENS_FACING = intPreferencesKey("camera_lens_facing")
         val MIRROR_PREVIEW = booleanPreferencesKey("mirror_preview")
         val CONTRAST_BOOST = floatPreferencesKey("contrast_boost")
         val PAPER_WIDTH_80MM = booleanPreferencesKey("paper_width_80mm")

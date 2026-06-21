@@ -116,11 +116,39 @@ fun SettingsPanel(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Camera Facing
-            SettingRow(label = "Front Camera") {
-                Switch(
-                    checked = settings.cameraFacingFront,
-                    onCheckedChange = { onSettingsChanged(settings.copy(cameraFacingFront = it)) }
-                )
+            var expandedCamera by remember { mutableStateOf(false) }
+            val cameraOptions = listOf("Front", "Back", "External USB")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "Default Camera", style = MaterialTheme.typography.bodyLarge)
+                Box {
+                    TextButton(onClick = { expandedCamera = true }) {
+                        Text(
+                            text = cameraOptions.getOrElse(settings.cameraLensFacing) { "Front" },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = AccentGold
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expandedCamera,
+                        onDismissRequest = { expandedCamera = false }
+                    ) {
+                        cameraOptions.forEachIndexed { index, option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    onSettingsChanged(settings.copy(cameraLensFacing = index))
+                                    expandedCamera = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
             // Mirror
