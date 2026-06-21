@@ -20,5 +20,9 @@ data class AppSettings(
     val squareMode: Boolean = false,
     val borderDesignId: Int = 0,
     val ringLightEnabled: Boolean = true,
-    val saveToDevice: Boolean = true
+    val saveToDevice: Boolean = true,
+    val themeName: String = "Dark",
+    val startButtonOffsetX: Float = 0f,
+    val startButtonOffsetY: Float = 0f,
+    val startButtonScale: Float = 1f
 )

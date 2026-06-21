@@ -44,7 +44,11 @@ class SettingsRepository @Inject constructor(
             squareMode = prefs[Keys.SQUARE_MODE] ?: false,
             borderDesignId = prefs[Keys.BORDER_DESIGN_ID] ?: 0,
             ringLightEnabled = prefs[Keys.RING_LIGHT_ENABLED] ?: true,
-            saveToDevice = prefs[Keys.SAVE_TO_DEVICE] ?: true
+            saveToDevice = prefs[Keys.SAVE_TO_DEVICE] ?: true,
+            themeName = prefs[Keys.THEME_NAME] ?: "Dark",
+            startButtonOffsetX = prefs[Keys.START_BUTTON_OFFSET_X] ?: 0f,
+            startButtonOffsetY = prefs[Keys.START_BUTTON_OFFSET_Y] ?: 0f,
+            startButtonScale = prefs[Keys.START_BUTTON_SCALE] ?: 1f
         )
     }
 
@@ -66,6 +70,10 @@ class SettingsRepository @Inject constructor(
             prefs[Keys.BORDER_DESIGN_ID] = settings.borderDesignId
             prefs[Keys.RING_LIGHT_ENABLED] = settings.ringLightEnabled
             prefs[Keys.SAVE_TO_DEVICE] = settings.saveToDevice
+            prefs[Keys.THEME_NAME] = settings.themeName
+            prefs[Keys.START_BUTTON_OFFSET_X] = settings.startButtonOffsetX
+            prefs[Keys.START_BUTTON_OFFSET_Y] = settings.startButtonOffsetY
+            prefs[Keys.START_BUTTON_SCALE] = settings.startButtonScale
             
             if (settings.customLogoUri.isNullOrBlank()) {
                 prefs.remove(Keys.CUSTOM_LOGO_URI)
@@ -93,5 +101,9 @@ class SettingsRepository @Inject constructor(
         val BORDER_DESIGN_ID = intPreferencesKey("border_design_id")
         val RING_LIGHT_ENABLED = booleanPreferencesKey("ring_light_enabled")
         val SAVE_TO_DEVICE = booleanPreferencesKey("save_to_device")
+        val THEME_NAME = stringPreferencesKey("theme_name")
+        val START_BUTTON_OFFSET_X = floatPreferencesKey("start_button_offset_x")
+        val START_BUTTON_OFFSET_Y = floatPreferencesKey("start_button_offset_y")
+        val START_BUTTON_SCALE = floatPreferencesKey("start_button_scale")
     }
 }

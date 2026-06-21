@@ -8,7 +8,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -30,6 +31,7 @@ import androidx.activity.compose.BackHandler
 @Composable
 fun PreviewScreen(
     photos: List<Bitmap?>,
+    previewBitmap: Bitmap? = null,
     copyCount: Int,
     squareMode: Boolean,
     onRetakePhoto: (Int) -> Unit,
@@ -67,23 +69,34 @@ fun PreviewScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Photos Grid
-        Box(modifier = Modifier.weight(1f)) {
-            val columns = when (photos.size) {
-                1 -> 1
-                2 -> 2
-                3 -> 3
-                4 -> 2
-                6 -> 3
-                else -> 2
+        // Print Preview
+        Box(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            if (previewBitmap != null) {
+                Image(
+                    bitmap = previewBitmap.asImageBitmap(),
+                    contentDescription = "Print Preview",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            } else {
+                CircularProgressIndicator(color = AccentGold)
             }
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(if (columns > 0) columns else 1),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                itemsIndexed(photos) { index, bitmap ->
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Retake Thumbnails Strip
+        Text("Tap to retake a specific photo:", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        Spacer(modifier = Modifier.height(4.dp))
+        androidx.compose.foundation.lazy.LazyRow(
+            modifier = Modifier.fillMaxWidth().height(80.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            itemsIndexed(photos) { index, bitmap ->
+                Box(modifier = Modifier.aspectRatio(if (squareMode) 1f else 0.75f)) {
                     PhotoThumbnail(
                         bitmap = bitmap,
                         squareMode = squareMode,

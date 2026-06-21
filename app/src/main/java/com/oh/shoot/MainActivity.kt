@@ -29,19 +29,26 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            OhShootTheme {
+            val sessionViewModel: SessionViewModel = hiltViewModel()
+            val uiState by sessionViewModel.uiState.collectAsState()
+            
+            OhShootTheme(themeName = uiState.appSettings.themeName) {
                 val navController = rememberNavController()
-                val sessionViewModel: SessionViewModel = hiltViewModel()
-                val uiState by sessionViewModel.uiState.collectAsState()
                 
                 var showSettings by remember { mutableStateOf(false) }
+                var isEditingStandby by remember { mutableStateOf(false) }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        AppNavGraph(navController = navController, viewModel = sessionViewModel)
+                        AppNavGraph(
+                            navController = navController,
+                            viewModel = sessionViewModel,
+                            isEditingStandby = isEditingStandby,
+                            onExitEditMode = { isEditingStandby = false }
+                        )
                         
                         // Persistent Status Dot + Gear Icon
                         val printerState by sessionViewModel.printerState.collectAsState()
@@ -52,29 +59,31 @@ class MainActivity : ComponentActivity() {
                             is PrinterState.Error -> Color(0xFFF44336) // Red
                         }
 
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
+                        if (!isEditingStandby) {
+                            Row(
                                 modifier = Modifier
-                                    .size(12.dp)
-                                    .background(dotColor, CircleShape)
-                                    .clickable(enabled = printerState is PrinterState.Disconnected) {
-                                        sessionViewModel.checkPrinterStatus()
-                                    }
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            IconButton(
-                                onClick = { showSettings = true }
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "Settings",
-                                    tint = Color.White.copy(alpha = 0.5f)
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .background(dotColor, CircleShape)
+                                        .clickable(enabled = printerState is PrinterState.Disconnected) {
+                                            sessionViewModel.checkPrinterStatus()
+                                        }
                                 )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                IconButton(
+                                    onClick = { showSettings = true }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Settings",
+                                        tint = Color.White.copy(alpha = 0.5f)
+                                    )
+                                }
                             }
                         }
                     }
@@ -85,6 +94,10 @@ class MainActivity : ComponentActivity() {
                             settings = uiState.appSettings,
                             printerState = printerState,
                             onSettingsChanged = { sessionViewModel.updateSettings(it) },
+                            onEditStandbyLayout = {
+                                showSettings = false
+                                isEditingStandby = true
+                            },
                             onDismiss = { showSettings = false }
                         )
                     }

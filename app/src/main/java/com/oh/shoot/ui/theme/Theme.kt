@@ -25,11 +25,62 @@ private val DarkColorScheme = darkColorScheme(
     onError = TextPrimary
 )
 
+private val LightColorScheme = darkColorScheme( // Reusing darkColorScheme for consistent contrast defaults
+    primary = AccentGold,
+    secondary = AccentCream,
+    tertiary = Success,
+    background = LightBackground,
+    surface = LightSurface,
+    onPrimary = LightSurface,
+    onSecondary = LightSurface,
+    onTertiary = LightSurface,
+    onBackground = LightText,
+    onSurface = LightText,
+    error = Error,
+    onError = LightSurface
+)
+
+private val PinkColorScheme = darkColorScheme(
+    primary = PinkText,
+    secondary = AccentGold,
+    tertiary = Success,
+    background = PinkBackground,
+    surface = PinkSurface,
+    onPrimary = PinkSurface,
+    onSecondary = PinkSurface,
+    onTertiary = PinkSurface,
+    onBackground = PinkText,
+    onSurface = PinkText,
+    error = Error,
+    onError = PinkSurface
+)
+
+private val BlueColorScheme = darkColorScheme(
+    primary = BlueText,
+    secondary = AccentGold,
+    tertiary = Success,
+    background = BlueBackground,
+    surface = BlueSurface,
+    onPrimary = BlueSurface,
+    onSecondary = BlueSurface,
+    onTertiary = BlueSurface,
+    onBackground = BlueText,
+    onSurface = BlueText,
+    error = Error,
+    onError = BlueSurface
+)
+
 @Composable
 fun OhShootTheme(
+    themeName: String = "Dark",
     content: @Composable () -> Unit
 ) {
-    val colorScheme = DarkColorScheme
+    val colorScheme = when (themeName) {
+        "Light" -> LightColorScheme
+        "Pink" -> PinkColorScheme
+        "Midnight Blue" -> BlueColorScheme
+        else -> DarkColorScheme
+    }
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {

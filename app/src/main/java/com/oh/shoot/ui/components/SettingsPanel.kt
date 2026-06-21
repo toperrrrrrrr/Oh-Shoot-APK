@@ -31,6 +31,7 @@ fun SettingsPanel(
     settings: AppSettings,
     printerState: PrinterState,
     onSettingsChanged: (AppSettings) -> Unit,
+    onEditStandbyLayout: () -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -265,6 +266,38 @@ fun SettingsPanel(
                 }
             }
 
+            // App Theme
+            var expandedTheme by remember { mutableStateOf(false) }
+            val themes = listOf("Dark", "Light", "Pink", "Midnight Blue")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "App Theme", style = MaterialTheme.typography.bodyLarge)
+                Box {
+                    TextButton(onClick = { expandedTheme = true }) {
+                        Text(text = settings.themeName, style = MaterialTheme.typography.bodyLarge, color = AccentGold)
+                    }
+                    DropdownMenu(
+                        expanded = expandedTheme,
+                        onDismissRequest = { expandedTheme = false }
+                    ) {
+                        themes.forEach { theme ->
+                            DropdownMenuItem(
+                                text = { Text(theme) },
+                                onClick = {
+                                    onSettingsChanged(settings.copy(themeName = theme))
+                                    expandedTheme = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             // Frame Styles
@@ -318,6 +351,15 @@ fun SettingsPanel(
                     color = AccentGold,
                     modifier = Modifier.padding(top = 4.dp)
                 )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = onEditStandbyLayout,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Edit Standby Layout (Move Start Button)")
             }
 
             Spacer(modifier = Modifier.height(16.dp))

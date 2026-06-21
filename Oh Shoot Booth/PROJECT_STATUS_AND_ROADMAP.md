@@ -36,13 +36,13 @@ Below is the current state of progress across the planned features:
 
 ### Phase 2 — Customization Layer
 
-*   **Theme & Background Customization**: 🔴 *Not Implemented*. The canvas and app background colors are hardcoded to dark colors in [Color.kt](file:///c:/Users/Nori/Desktop/OhShoot/app/src/main/java/com/oh/shoot/ui/theme/Color.kt) and [Theme.kt](file:///c:/Users/Nori/Desktop/OhShoot/app/src/main/java/com/oh/shoot/ui/theme/Theme.kt).
-*   **Drag-and-Drop Start Button**: 🔴 *Not Implemented*. Pulse circle start button is centered and fixed in size.
+*   **Theme & Background Customization**: 🟢 **Fully Implemented**. Added four theme presets (Dark, Light, Pink, Midnight Blue) stored in `AppSettings` and applied dynamically via `Theme.kt`.
+*   **Drag-and-Drop Start Button**: 🟢 **Fully Implemented**. Added "Edit Standby Layout" setting which enables moving and scaling the start button on the Standby Screen using Compose gestures.
 *   **Logo Upload (Standby & Print)**: 🟢 **Fully Implemented**. Integrated into prints via rasterization and dynamically rendered on the `StandbyScreen` via Coil `AsyncImage`.
 *   **Header/Footer Text**: 🟢 *Fully Implemented*. Custom header/footer text are persisted in [SettingsRepository.kt](file:///c:/Users/Nori/Desktop/OhShoot/app/src/main/java/com/oh/shoot/data/SettingsRepository.kt) and formatted on print jobs using [EscPosBuilder.kt](file:///c:/Users/Nori/Desktop/OhShoot/app/src/main/java/com/oh/shoot/printer/EscPosBuilder.kt).
 *   **Contrast Boost Control**: 🟢 *Fully Implemented*. Persisted slider in settings adjustments contrast multipliers dynamically, which are fed into `BitmapProcessor.convertToEscPosRasterDithered`.
 *   **Frame Styles**: 🟢 **Fully Implemented**. Added UI picker in `SettingsPanel` to select "None", "Thin Black", or "Polaroid".
-*   **Save-to-Device Toggle & Print Preview**: 🟡 *Partially Implemented*. Added `saveToDevice` toggle in settings to enable/disable saving photos to gallery. The preview screen still shows a basic thumbnail list rather than how it looks inside a decorative frame.
+*   **Save-to-Device Toggle & Print Preview**: 🟢 **Fully Implemented**. Added `saveToDevice` toggle in settings. The preview screen now displays an exact preview of the layout using the actual print framing output, with a thumbnail strip for retakes.
 
 ---
 

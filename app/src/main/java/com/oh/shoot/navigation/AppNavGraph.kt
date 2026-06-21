@@ -13,7 +13,9 @@ import com.oh.shoot.viewmodel.SessionViewModel
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
-    viewModel: SessionViewModel
+    viewModel: SessionViewModel,
+    isEditingStandby: Boolean = false,
+    onExitEditMode: () -> Unit = {}
 ) {
     NavHost(
         navController = navController,
@@ -30,6 +32,18 @@ fun AppNavGraph(
             val uiState by viewModel.uiState.collectAsState()
             StandbyScreen(
                 customLogoUri = uiState.appSettings.customLogoUri,
+                isEditing = isEditingStandby,
+                offsetX = uiState.appSettings.startButtonOffsetX,
+                offsetY = uiState.appSettings.startButtonOffsetY,
+                scale = uiState.appSettings.startButtonScale,
+                onUpdateLayout = { x, y, s -> 
+                    viewModel.updateSettings(uiState.appSettings.copy(
+                        startButtonOffsetX = x,
+                        startButtonOffsetY = y,
+                        startButtonScale = s
+                    ))
+                },
+                onExitEditMode = onExitEditMode,
                 onTap = {
                     navController.navigate(Screen.LayoutSelect.route)
                 }
@@ -78,6 +92,7 @@ fun AppNavGraph(
             val uiState by viewModel.uiState.collectAsState()
             PreviewScreen(
                 photos = uiState.capturedPhotos,
+                previewBitmap = uiState.previewBitmap,
                 copyCount = uiState.copyCount,
                 squareMode = uiState.appSettings.squareMode,
                 onRetakePhoto = { index ->

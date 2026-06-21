@@ -34,7 +34,8 @@ data class SessionUiState(
     val copyCount: Int = 1,
     val sessionComplete: Boolean = false,
     val appSettings: AppSettings = AppSettings(),
-    val isPrinting: Boolean = false
+    val isPrinting: Boolean = false,
+    val previewBitmap: Bitmap? = null
 )
 
 @HiltViewModel
@@ -234,11 +235,34 @@ class SessionViewModel @Inject constructor(
             if (index in newPhotos.indices) {
                 newPhotos[index] = bitmap
             }
+            val isComplete = newPhotos.all { it != null }
             state.copy(
                 capturedPhotos = newPhotos,
                 currentShotIndex = state.currentShotIndex + 1,
-                sessionComplete = newPhotos.all { it != null }
+                sessionComplete = isComplete
             )
+        }
+        if (_uiState.value.sessionComplete) {
+            generatePreview()
+        }
+    }
+
+    private fun generatePreview() {
+        viewModelScope.launch(Dispatchers.Default) {
+            val state = _uiState.value
+            val photos = state.capturedPhotos.filterNotNull()
+            if (photos.size < state.selectedLayout) return@launch
+
+            val printWidth = if (state.appSettings.paperWidth80mm) 576 else 384
+            val gridBitmap = BitmapProcessor.combineBitmapsToGrid(
+                bitmaps = photos,
+                targetWidth = printWidth,
+                type = state.selectedLayoutType,
+                cornerRadius = state.appSettings.printedCornerRadius,
+                squareMode = state.appSettings.squareMode,
+                borderDesignId = state.appSettings.borderDesignId
+            )
+            _uiState.update { it.copy(previewBitmap = gridBitmap) }
         }
     }
 

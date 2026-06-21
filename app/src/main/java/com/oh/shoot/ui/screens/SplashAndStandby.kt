@@ -9,6 +9,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,8 +27,11 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.roundToInt
 import androidx.core.content.ContextCompat
 import com.oh.shoot.BluetoothPrinter
 import com.oh.shoot.ui.theme.*
@@ -301,7 +305,16 @@ fun DiagnosticItem(label: String, state: CheckState) {
 }
 
 @Composable
-fun StandbyScreen(customLogoUri: String? = null, onTap: () -> Unit) {
+fun StandbyScreen(
+    customLogoUri: String? = null,
+    isEditing: Boolean = false,
+    offsetX: Float = 0f,
+    offsetY: Float = 0f,
+    scale: Float = 1f,
+    onUpdateLayout: (Float, Float, Float) -> Unit = { _, _, _ -> },
+    onExitEditMode: () -> Unit = {},
+    onTap: () -> Unit
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "ringPulse")
     val ringScale by infiniteTransition.animateFloat(
         initialValue = 0.9f,
@@ -313,11 +326,16 @@ fun StandbyScreen(customLogoUri: String? = null, onTap: () -> Unit) {
         label = "scale"
     )
 
+    var currentOffsetX by remember(offsetX) { mutableStateOf(offsetX) }
+    var currentOffsetY by remember(offsetY) { mutableStateOf(offsetY) }
+    var currentScale by remember(scale) { mutableStateOf(scale) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
             .clickable(
+                enabled = !isEditing,
                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                 indication = null
             ) { onTap() },
@@ -337,9 +355,21 @@ fun StandbyScreen(customLogoUri: String? = null, onTap: () -> Unit) {
             // Pulsing Circle Button
             Box(
                 modifier = Modifier
+                    .offset { IntOffset(currentOffsetX.roundToInt(), currentOffsetY.roundToInt()) }
                     .size(240.dp)
-                    .scale(ringScale)
-                    .background(AccentGold, CircleShape),
+                    .scale(ringScale * currentScale)
+                    .then(
+                        if (isEditing) {
+                            Modifier.pointerInput(Unit) {
+                                detectTransformGestures { _, pan, zoom, _ ->
+                                    currentScale = (currentScale * zoom).coerceIn(0.3f, 3f)
+                                    currentOffsetX += pan.x
+                                    currentOffsetY += pan.y
+                                }
+                            }
+                        } else Modifier
+                    )
+                    .background(if (isEditing) AccentGold.copy(alpha = 0.6f) else AccentGold, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -349,6 +379,38 @@ fun StandbyScreen(customLogoUri: String? = null, onTap: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )
+            }
+        }
+
+        if (isEditing) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.7f))
+                    .padding(vertical = 16.dp, horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Edit Mode: Drag to move, Pinch to scale", color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    OutlinedButton(onClick = { 
+                        currentOffsetX = 0f
+                        currentOffsetY = 0f
+                        currentScale = 1f
+                    }) {
+                        Text("Reset", color = Color.White)
+                    }
+                    Button(
+                        onClick = { 
+                            onUpdateLayout(currentOffsetX, currentOffsetY, currentScale)
+                            onExitEditMode() 
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Surface)
+                    ) {
+                        Text("Save Layout")
+                    }
+                }
             }
         }
     }
