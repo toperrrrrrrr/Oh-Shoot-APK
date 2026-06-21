@@ -27,9 +27,13 @@ fun AppNavGraph(
             })
         }
         composable(Screen.Standby.route) { 
-            StandbyScreen(onTap = {
-                navController.navigate(Screen.LayoutSelect.route)
-            })
+            val uiState by viewModel.uiState.collectAsState()
+            StandbyScreen(
+                customLogoUri = uiState.appSettings.customLogoUri,
+                onTap = {
+                    navController.navigate(Screen.LayoutSelect.route)
+                }
+            )
         }
         composable(Screen.LayoutSelect.route) { 
             LayoutSelectScreen(
@@ -110,6 +114,9 @@ fun AppNavGraph(
                 appSettings = uiState.appSettings,
                 layoutType = uiState.selectedLayoutType,
                 printerState = printerState,
+                onRetryConnection = {
+                    viewModel.checkPrinterStatus()
+                },
                 onCancel = {
                     viewModel.resetSession()
                     navController.navigate(Screen.Standby.route) {

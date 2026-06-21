@@ -43,7 +43,8 @@ class SettingsRepository @Inject constructor(
             printedCornerRadius = prefs[Keys.PRINTED_CORNER_RADIUS] ?: 8f,
             squareMode = prefs[Keys.SQUARE_MODE] ?: false,
             borderDesignId = prefs[Keys.BORDER_DESIGN_ID] ?: 0,
-            ringLightEnabled = prefs[Keys.RING_LIGHT_ENABLED] ?: true
+            ringLightEnabled = prefs[Keys.RING_LIGHT_ENABLED] ?: true,
+            saveToDevice = prefs[Keys.SAVE_TO_DEVICE] ?: true
         )
     }
 
@@ -64,6 +65,7 @@ class SettingsRepository @Inject constructor(
             prefs[Keys.SQUARE_MODE] = settings.squareMode
             prefs[Keys.BORDER_DESIGN_ID] = settings.borderDesignId
             prefs[Keys.RING_LIGHT_ENABLED] = settings.ringLightEnabled
+            prefs[Keys.SAVE_TO_DEVICE] = settings.saveToDevice
             
             if (settings.customLogoUri.isNullOrBlank()) {
                 prefs.remove(Keys.CUSTOM_LOGO_URI)
@@ -90,5 +92,6 @@ class SettingsRepository @Inject constructor(
         val SQUARE_MODE = booleanPreferencesKey("square_mode")
         val BORDER_DESIGN_ID = intPreferencesKey("border_design_id")
         val RING_LIGHT_ENABLED = booleanPreferencesKey("ring_light_enabled")
+        val SAVE_TO_DEVICE = booleanPreferencesKey("save_to_device")
     }
 }

@@ -136,13 +136,16 @@ object BluetoothPrinter {
     }
 
     /**
-     * Prints a raw ESC/POS byte array payload to the Bluetooth printer.
+     * Prints a raw ESC/POS byte array payload to the Bluetooth printer, supporting multiple copies.
+     * Keeps the socket connection open and introduces a delay between copies to prevent buffer overflows.
      */
     @SuppressLint("MissingPermission")
     suspend fun printData(
         context: Context,
         device: BluetoothDevice,
-        data: ByteArray
+        data: ByteArray,
+        copies: Int = 1,
+        delayBetweenCopiesMs: Long = 1000L
     ): Result<Unit> = withContext(Dispatchers.IO) {
         var socket: BluetoothSocket? = null
         try {
@@ -160,8 +163,14 @@ object BluetoothPrinter {
 
             socket.connect()
             val outputStream = socket.outputStream
-            outputStream.write(data)
-            outputStream.flush()
+            
+            repeat(copies) { index ->
+                outputStream.write(data)
+                outputStream.flush()
+                if (index < copies - 1) {
+                    kotlinx.coroutines.delay(delayBetweenCopiesMs)
+                }
+            }
             Result.success(Unit)
         } catch (e: IOException) {
             e.printStackTrace()

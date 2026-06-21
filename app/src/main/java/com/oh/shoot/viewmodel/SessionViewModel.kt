@@ -167,32 +167,43 @@ class SessionViewModel @Inject constructor(
             val data = builder.build()
             
             // Trigger gallery save
-            photos.forEachIndexed { index, bitmap ->
-                val timestamp = System.currentTimeMillis()
-                ImageUtils.saveToGallery(context, bitmap, "OhShoot_${timestamp}_$index")
+            if (state.appSettings.saveToDevice) {
+                photos.forEachIndexed { index, bitmap ->
+                    val timestamp = System.currentTimeMillis()
+                    ImageUtils.saveToGallery(context, bitmap, "OhShoot_${timestamp}_$index")
+                }
             }
 
             var printSucceeded = true
-            repeat(state.copyCount) {
-                if (state.appSettings.useBluetoothPrinter) {
-                    val device = BluetoothPrinter.findPairedPrinter(context)
-                    if (device != null) {
-                        val result = BluetoothPrinter.printData(context, device, data)
-                        if (result.isFailure) {
-                            Log.e("SessionViewModel", "Bluetooth print failed", result.exceptionOrNull())
-                            _printerState.value = PrinterState.Error("Bluetooth print failed: ${result.exceptionOrNull()?.message}")
-                            printSucceeded = false
-                        }
-                    } else {
-                        Log.e("SessionViewModel", "No Bluetooth printer found during printing")
-                        _printerState.value = PrinterState.Error("No paired Bluetooth printer found")
+            if (state.appSettings.useBluetoothPrinter) {
+                val device = BluetoothPrinter.findPairedPrinter(context)
+                if (device != null) {
+                    val result = BluetoothPrinter.printData(
+                        context = context,
+                        device = device,
+                        data = data,
+                        copies = state.copyCount,
+                        delayBetweenCopiesMs = 1000L
+                    )
+                    if (result.isFailure) {
+                        Log.e("SessionViewModel", "Bluetooth print failed", result.exceptionOrNull())
+                        _printerState.value = PrinterState.Error("Bluetooth print failed: ${result.exceptionOrNull()?.message}")
                         printSucceeded = false
                     }
                 } else {
+                    Log.e("SessionViewModel", "No Bluetooth printer found during printing")
+                    _printerState.value = PrinterState.Error("No paired Bluetooth printer found")
+                    printSucceeded = false
+                }
+            } else {
+                repeat(state.copyCount) { index ->
                     val success = printerManager.print(data)
                     if (!success) {
                         _printerState.value = PrinterState.Error("USB Print failed. Check cable.")
                         printSucceeded = false
+                    }
+                    if (index < state.copyCount - 1) {
+                        kotlinx.coroutines.delay(1000L)
                     }
                 }
             }

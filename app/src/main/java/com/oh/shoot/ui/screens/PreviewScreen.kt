@@ -69,7 +69,14 @@ fun PreviewScreen(
 
         // Photos Grid
         Box(modifier = Modifier.weight(1f)) {
-            val columns = if (photos.size == 4) 2 else photos.size
+            val columns = when (photos.size) {
+                1 -> 1
+                2 -> 2
+                3 -> 3
+                4 -> 2
+                6 -> 3
+                else -> 2
+            }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(if (columns > 0) columns else 1),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),

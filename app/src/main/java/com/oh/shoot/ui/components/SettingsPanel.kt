@@ -145,6 +145,14 @@ fun SettingsPanel(
                 )
             }
 
+            // Save to Gallery
+            SettingRow(label = "Save Photos to Gallery") {
+                Switch(
+                    checked = settings.saveToDevice,
+                    onCheckedChange = { onSettingsChanged(settings.copy(saveToDevice = it)) }
+                )
+            }
+
             // Corner Radius
             Text("Printed Corner Radius: ${settings.printedCornerRadius.toInt()}px", style = MaterialTheme.typography.bodyLarge)
             Slider(
@@ -253,6 +261,28 @@ fun SettingsPanel(
                                 }
                             )
                         }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Frame Styles
+            Text("Frame Style", style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val styles = listOf("None", "Thin Black", "Polaroid")
+                styles.forEachIndexed { index, name ->
+                    val isSelected = settings.borderDesignId == index
+                    OutlinedButton(
+                        onClick = { onSettingsChanged(settings.copy(borderDesignId = index)) },
+                        modifier = Modifier.weight(1f),
+                        colors = if (isSelected) ButtonDefaults.outlinedButtonColors(containerColor = AccentGold.copy(alpha = 0.2f)) else ButtonDefaults.outlinedButtonColors()
+                    ) {
+                        Text(name, fontSize = 12.sp)
                     }
                 }
             }

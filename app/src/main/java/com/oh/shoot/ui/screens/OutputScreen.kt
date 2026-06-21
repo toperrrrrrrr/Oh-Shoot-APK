@@ -32,6 +32,8 @@ import com.oh.shoot.BitmapProcessor
 import com.oh.shoot.ui.screens.LayoutType
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 
 @Composable
 fun OutputScreen(
@@ -39,6 +41,7 @@ fun OutputScreen(
     appSettings: AppSettings,
     layoutType: LayoutType,
     printerState: PrinterState,
+    onRetryConnection: () -> Unit,
     onCancel: () -> Unit,
     onPrintConfirmed: () -> Unit
 ) {
@@ -104,18 +107,37 @@ fun OutputScreen(
             is PrinterState.Error -> Color(0xFFF44336)
         }
         
-        Surface(
-            color = statusColor.copy(alpha = 0.15f),
-            border = BorderStroke(1.dp, statusColor),
-            shape = RoundedCornerShape(16.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
             modifier = Modifier.padding(bottom = 12.dp)
         ) {
-            Text(
-                text = statusText,
-                color = statusColor,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-            )
+            Surface(
+                color = statusColor.copy(alpha = 0.15f),
+                border = BorderStroke(1.dp, statusColor),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text(
+                    text = statusText,
+                    color = statusColor,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+            
+            if (printerState !is PrinterState.Ready && printerState !is PrinterState.Connecting) {
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = onRetryConnection,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Retry Connection",
+                        tint = AccentGold
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))

@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.oh.shoot.BluetoothPrinter
 import com.oh.shoot.ui.theme.*
+import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -300,7 +301,7 @@ fun DiagnosticItem(label: String, state: CheckState) {
 }
 
 @Composable
-fun StandbyScreen(onTap: () -> Unit) {
+fun StandbyScreen(customLogoUri: String? = null, onTap: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "ringPulse")
     val ringScale by infiniteTransition.animateFloat(
         initialValue = 0.9f,
@@ -322,21 +323,33 @@ fun StandbyScreen(onTap: () -> Unit) {
             ) { onTap() },
         contentAlignment = Alignment.Center
     ) {
-        // Pulsing Circle Button
-        Box(
-            modifier = Modifier
-                .size(240.dp)
-                .scale(ringScale)
-                .background(AccentGold, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "TAP TO START",
-                style = MaterialTheme.typography.headlineMedium,
-                color = Surface,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (customLogoUri != null) {
+                AsyncImage(
+                    model = customLogoUri,
+                    contentDescription = "Custom Logo",
+                    modifier = Modifier
+                        .height(120.dp)
+                        .padding(bottom = 32.dp)
+                )
+            }
+
+            // Pulsing Circle Button
+            Box(
+                modifier = Modifier
+                    .size(240.dp)
+                    .scale(ringScale)
+                    .background(AccentGold, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "TAP TO START",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Surface,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
         }
     }
 }

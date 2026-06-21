@@ -19,5 +19,6 @@ data class AppSettings(
     val continuousCountdown: Boolean = false,
     val squareMode: Boolean = false,
     val borderDesignId: Int = 0,
-    val ringLightEnabled: Boolean = true
+    val ringLightEnabled: Boolean = true,
+    val saveToDevice: Boolean = true
 )
