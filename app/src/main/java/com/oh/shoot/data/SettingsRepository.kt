@@ -39,7 +39,11 @@ class SettingsRepository @Inject constructor(
             useBluetoothPrinter = prefs[Keys.USE_BLUETOOTH_PRINTER] ?: true,
             businessMode = prefs[Keys.BUSINESS_MODE] ?: "Rental",
             soundsEnabled = prefs[Keys.SOUNDS_ENABLED] ?: true,
-            customLogoUri = prefs[Keys.CUSTOM_LOGO_URI]
+            customLogoUri = prefs[Keys.CUSTOM_LOGO_URI],
+            printedCornerRadius = prefs[Keys.PRINTED_CORNER_RADIUS] ?: 8f,
+            squareMode = prefs[Keys.SQUARE_MODE] ?: false,
+            borderDesignId = prefs[Keys.BORDER_DESIGN_ID] ?: 0,
+            ringLightEnabled = prefs[Keys.RING_LIGHT_ENABLED] ?: true
         )
     }
 
@@ -56,6 +60,11 @@ class SettingsRepository @Inject constructor(
             prefs[Keys.USE_BLUETOOTH_PRINTER] = settings.useBluetoothPrinter
             prefs[Keys.BUSINESS_MODE] = settings.businessMode
             prefs[Keys.SOUNDS_ENABLED] = settings.soundsEnabled
+            prefs[Keys.PRINTED_CORNER_RADIUS] = settings.printedCornerRadius
+            prefs[Keys.SQUARE_MODE] = settings.squareMode
+            prefs[Keys.BORDER_DESIGN_ID] = settings.borderDesignId
+            prefs[Keys.RING_LIGHT_ENABLED] = settings.ringLightEnabled
+            
             if (settings.customLogoUri.isNullOrBlank()) {
                 prefs.remove(Keys.CUSTOM_LOGO_URI)
             } else {
@@ -77,5 +86,9 @@ class SettingsRepository @Inject constructor(
         val BUSINESS_MODE = stringPreferencesKey("business_mode")
         val SOUNDS_ENABLED = booleanPreferencesKey("sounds_enabled")
         val CUSTOM_LOGO_URI = stringPreferencesKey("custom_logo_uri")
+        val PRINTED_CORNER_RADIUS = floatPreferencesKey("printed_corner_radius")
+        val SQUARE_MODE = booleanPreferencesKey("square_mode")
+        val BORDER_DESIGN_ID = intPreferencesKey("border_design_id")
+        val RING_LIGHT_ENABLED = booleanPreferencesKey("ring_light_enabled")
     }
 }

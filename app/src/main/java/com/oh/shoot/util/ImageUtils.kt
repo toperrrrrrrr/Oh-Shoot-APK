@@ -60,7 +60,7 @@ object ImageUtils {
             put(MediaStore.Images.Media.DISPLAY_NAME, "$fileName.jpg")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/OhShoot")
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
         }

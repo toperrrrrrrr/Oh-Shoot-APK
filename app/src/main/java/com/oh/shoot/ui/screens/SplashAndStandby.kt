@@ -1,46 +1,300 @@
 package com.oh.shoot.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.oh.shoot.BluetoothPrinter
 import com.oh.shoot.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+sealed class CheckState {
+    object Idle : CheckState()
+    object Checking : CheckState()
+    data class Success(val message: String) : CheckState()
+    data class Error(val message: String) : CheckState()
+}
 
 @Composable
 fun SplashScreen(onTimeout: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var cameraPermissionState by remember { mutableStateOf<CheckState>(CheckState.Idle) }
+    var bluetoothPermissionState by remember { mutableStateOf<CheckState>(CheckState.Idle) }
+    var printerPairedState by remember { mutableStateOf<CheckState>(CheckState.Idle) }
+    var printerConnectionState by remember { mutableStateOf<CheckState>(CheckState.Idle) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val cameraGranted = permissions[Manifest.permission.CAMERA] == true
+        cameraPermissionState = if (cameraGranted) {
+            CheckState.Success("Camera access granted")
+        } else {
+            CheckState.Error("Camera access denied")
+        }
+
+        val btGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissions[Manifest.permission.BLUETOOTH_CONNECT] == true
+        } else {
+            true
+        }
+        bluetoothPermissionState = if (btGranted) {
+            CheckState.Success("Bluetooth ready")
+        } else {
+            CheckState.Error("Bluetooth permission denied")
+        }
+    }
+
+    fun runDiagnostics() {
+        scope.launch {
+            // 1. Check Camera
+            cameraPermissionState = CheckState.Checking
+            delay(400)
+            val hasCamera = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+            
+            // 2. Check Bluetooth Connect (SDK 31+)
+            bluetoothPermissionState = CheckState.Checking
+            val hasBt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true
+            }
+
+            if (hasCamera && hasBt) {
+                cameraPermissionState = CheckState.Success("Camera access granted")
+                bluetoothPermissionState = CheckState.Success("Bluetooth ready")
+            } else {
+                val list = mutableListOf<String>()
+                if (!hasCamera) list.add(Manifest.permission.CAMERA)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (!hasBt) {
+                        list.add(Manifest.permission.BLUETOOTH_CONNECT)
+                        list.add(Manifest.permission.BLUETOOTH_SCAN)
+                    }
+                }
+                permissionLauncher.launch(list.toTypedArray())
+                return@launch
+            }
+
+            // 3. Check Paired Printer
+            printerPairedState = CheckState.Checking
+            delay(400)
+            val device = BluetoothPrinter.findPairedPrinter(context)
+            if (device != null) {
+                printerPairedState = CheckState.Success("Paired: ${device.name ?: "Unknown"}")
+                
+                // 4. Test Connection
+                printerConnectionState = CheckState.Checking
+                delay(400)
+                val isConnected = BluetoothPrinter.testConnection(context, device)
+                if (isConnected) {
+                    printerConnectionState = CheckState.Success("Printer online & ready")
+                } else {
+                    printerConnectionState = CheckState.Error("Printer offline or unreachable")
+                }
+            } else {
+                printerPairedState = CheckState.Error("No paired printer found")
+                printerConnectionState = CheckState.Idle
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
-        delay(2000)
-        onTimeout()
+        runDiagnostics()
+    }
+
+    // Diagnostics completed success check (non-fatal printer error is ok)
+    val isCameraOk = cameraPermissionState is CheckState.Success
+    val isBtOk = bluetoothPermissionState is CheckState.Success
+    val allDiagnosticsFinished = (cameraPermissionState is CheckState.Success || cameraPermissionState is CheckState.Error) &&
+            (bluetoothPermissionState is CheckState.Success || bluetoothPermissionState is CheckState.Error) &&
+            (printerPairedState is CheckState.Success || printerPairedState is CheckState.Error) &&
+            (printerConnectionState is CheckState.Success || printerConnectionState is CheckState.Error || printerConnectionState is CheckState.Idle)
+
+    val autoProceed = isCameraOk && isBtOk && 
+            (printerConnectionState is CheckState.Success || printerPairedState is CheckState.Error || printerConnectionState is CheckState.Error)
+
+    LaunchedEffect(allDiagnosticsFinished, autoProceed) {
+        if (allDiagnosticsFinished && autoProceed) {
+            delay(1500)
+            onTimeout()
+        }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Background),
+            .background(Background)
+            .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth(0.8f)
+        ) {
             Text(
                 text = "OH Shoot!",
-                style = MaterialTheme.typography.displayLarge,
-                color = AccentCream
+                style = MaterialTheme.typography.displayMedium,
+                color = AccentCream,
+                fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "Print memories — instantly",
                 style = MaterialTheme.typography.bodyLarge,
                 color = TextMuted
             )
+            
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Diagnostic card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Surface),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "System Diagnostics",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = AccentGold,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    DiagnosticItem("Camera Permission", cameraPermissionState)
+                    DiagnosticItem("Bluetooth Services", bluetoothPermissionState)
+                    DiagnosticItem("Paired Printer Status", printerPairedState)
+                    DiagnosticItem("Printer Online Check", printerConnectionState)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Action Buttons / Progress
+            if (allDiagnosticsFinished) {
+                if (isCameraOk) {
+                    Button(
+                        onClick = onTimeout,
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Surface),
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(25.dp)
+                    ) {
+                        Text("CONTINUE TO BOOTH", fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Button(
+                        onClick = { runDiagnostics() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336), contentColor = Color.White),
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(25.dp)
+                    ) {
+                        Text("RETRY DIAGNOSTICS", fontWeight = FontWeight.Bold)
+                    }
+                }
+            } else {
+                CircularProgressIndicator(
+                    color = AccentGold,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DiagnosticItem(label: String, state: CheckState) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, color = TextPrimary, style = MaterialTheme.typography.bodyMedium)
+        
+        when (state) {
+            is CheckState.Idle -> {
+                Icon(
+                    imageVector = Icons.Default.HourglassEmpty,
+                    contentDescription = "Pending",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            is CheckState.Checking -> {
+                CircularProgressIndicator(
+                    color = AccentGold,
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp
+                )
+            }
+            is CheckState.Success -> {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = state.message, 
+                        color = Color(0xFF4CAF50), 
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Success",
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            is CheckState.Error -> {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = state.message, 
+                        color = Color(0xFFF44336), 
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                    Icon(
+                        imageVector = Icons.Default.Error,
+                        contentDescription = "Error",
+                        tint = Color(0xFFF44336),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -50,10 +304,10 @@ fun StandbyScreen(onTap: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "ringPulse")
     val ringScale by infiniteTransition.animateFloat(
         initialValue = 0.9f,
-        targetValue = 1.1f,
+        targetValue = 1.05f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = EaseInOut),
-            repeatMode = RepeatMode.Restart
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
         ),
         label = "scale"
     )
@@ -62,29 +316,27 @@ fun StandbyScreen(onTap: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
-            .clickable { onTap() },
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null
+            ) { onTap() },
         contentAlignment = Alignment.Center
     ) {
-        // Pulsing Ring
+        // Pulsing Circle Button
         Box(
             modifier = Modifier
-                .size(280.dp)
+                .size(240.dp)
                 .scale(ringScale)
+                .background(AccentGold, CircleShape),
+            contentAlignment = Alignment.Center
         ) {
-            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(
-                    color = AccentGold.copy(alpha = 0.5f),
-                    radius = size.minDimension / 2,
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4.dp.toPx())
-                )
-            }
+            Text(
+                text = "TAP TO START",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Surface,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            )
         }
-
-        Text(
-            text = "TAP TO START",
-            style = MaterialTheme.typography.headlineMedium,
-            color = AccentCream,
-            letterSpacing = 2.sp
-        )
     }
 }

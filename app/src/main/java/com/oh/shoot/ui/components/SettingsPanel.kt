@@ -129,6 +129,31 @@ fun SettingsPanel(
                 )
             }
 
+            // Square Mode
+            SettingRow(label = "1:1 Square Mode") {
+                Switch(
+                    checked = settings.squareMode,
+                    onCheckedChange = { onSettingsChanged(settings.copy(squareMode = it)) }
+                )
+            }
+
+            // Software Ring Light
+            SettingRow(label = "Software Ring Light") {
+                Switch(
+                    checked = settings.ringLightEnabled,
+                    onCheckedChange = { onSettingsChanged(settings.copy(ringLightEnabled = it)) }
+                )
+            }
+
+            // Corner Radius
+            Text("Printed Corner Radius: ${settings.printedCornerRadius.toInt()}px", style = MaterialTheme.typography.bodyLarge)
+            Slider(
+                value = settings.printedCornerRadius,
+                onValueChange = { onSettingsChanged(settings.copy(printedCornerRadius = it)) },
+                valueRange = 0f..40f,
+                steps = 8
+            )
+
             // Bluetooth Printer Row
             SettingRow(label = "Use Bluetooth Printer") {
                 Switch(

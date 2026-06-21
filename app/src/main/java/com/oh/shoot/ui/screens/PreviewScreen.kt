@@ -21,18 +21,27 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.oh.shoot.ui.theme.*
+
+import androidx.activity.compose.BackHandler
 
 @Composable
 fun PreviewScreen(
     photos: List<Bitmap?>,
     copyCount: Int,
+    squareMode: Boolean,
     onRetakePhoto: (Int) -> Unit,
     onRetakeAll: () -> Unit,
     onSetCopyCount: (Int) -> Unit,
-    onPrint: () -> Unit
+    onPrint: () -> Unit,
+    onCancel: () -> Unit
 ) {
+    BackHandler {
+        // Block back press
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -40,11 +49,21 @@ fun PreviewScreen(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Review your photos",
-            style = MaterialTheme.typography.headlineMedium,
-            color = AccentCream
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Review your photos",
+                style = MaterialTheme.typography.headlineMedium,
+                color = AccentCream
+            )
+            
+            TextButton(onClick = onCancel) {
+                Text("CANCEL", color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -60,6 +79,7 @@ fun PreviewScreen(
                 itemsIndexed(photos) { index, bitmap ->
                     PhotoThumbnail(
                         bitmap = bitmap,
+                        squareMode = squareMode,
                         onClick = { onRetakePhoto(index) }
                     )
                 }
@@ -126,10 +146,10 @@ fun PreviewScreen(
 }
 
 @Composable
-fun PhotoThumbnail(bitmap: Bitmap?, onClick: () -> Unit) {
+fun PhotoThumbnail(bitmap: Bitmap?, squareMode: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .aspectRatio(0.75f)
+            .aspectRatio(if (squareMode) 1f else 0.75f)
             .clip(RoundedCornerShape(8.dp))
             .background(Surface2)
             .clickable { onClick() }

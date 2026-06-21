@@ -12,5 +12,12 @@ data class AppSettings(
     val useBluetoothPrinter: Boolean = true,
     val businessMode: String = "Rental",
     val soundsEnabled: Boolean = true,
-    val customLogoUri: String? = null
+    val customLogoUri: String? = null,
+    val printedCornerRadius: Float = 8f,
+    val headerIconSizeDp: Float = 48f,
+    val standbyImageUri: String? = null,
+    val continuousCountdown: Boolean = false,
+    val squareMode: Boolean = false,
+    val borderDesignId: Int = 0,
+    val ringLightEnabled: Boolean = true
 )

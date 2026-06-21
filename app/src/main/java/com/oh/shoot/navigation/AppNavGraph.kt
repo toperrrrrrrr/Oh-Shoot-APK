@@ -32,10 +32,16 @@ fun AppNavGraph(
             })
         }
         composable(Screen.LayoutSelect.route) { 
-            LayoutSelectScreen(onLayoutSelected = { layout ->
-                viewModel.startSession(layout)
-                navController.navigate(Screen.Capture.route)
-            })
+            LayoutSelectScreen(
+                onLayoutSelected = { option ->
+                    viewModel.startSession(option.photoCount, option.type)
+                    navController.navigate(Screen.Capture.route)
+                },
+                onCancel = {
+                    viewModel.resetSession()
+                    navController.popBackStack()
+                }
+            )
         }
         composable(Screen.Capture.route) { 
             val uiState by viewModel.uiState.collectAsState()
@@ -44,15 +50,23 @@ fun AppNavGraph(
                 currentPhotoIndex = uiState.currentShotIndex,
                 cameraFacingFront = uiState.appSettings.cameraFacingFront,
                 mirrorPreview = uiState.appSettings.mirrorPreview,
+                squareMode = uiState.appSettings.squareMode,
                 soundsEnabled = uiState.appSettings.soundsEnabled,
+                ringLightEnabled = uiState.appSettings.ringLightEnabled,
+                onCameraFacingChanged = { facing ->
+                    viewModel.updateSettings(uiState.appSettings.copy(cameraFacingFront = facing))
+                },
                 onPhotoCaptured = { bitmap ->
                     viewModel.savePhoto(uiState.currentShotIndex, bitmap)
                 },
                 onAllPhotosCaptured = {
                     navController.navigate(Screen.Preview.route)
                 },
-                onBack = {
-                    navController.popBackStack()
+                onCancel = {
+                    viewModel.resetSession()
+                    navController.navigate(Screen.Standby.route) {
+                        popUpTo(Screen.Standby.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -61,6 +75,7 @@ fun AppNavGraph(
             PreviewScreen(
                 photos = uiState.capturedPhotos,
                 copyCount = uiState.copyCount,
+                squareMode = uiState.appSettings.squareMode,
                 onRetakePhoto = { index ->
                     viewModel.retakePhoto(index)
                     navController.navigate(Screen.Capture.route) {
@@ -78,6 +93,12 @@ fun AppNavGraph(
                 },
                 onPrint = {
                     navController.navigate(Screen.Output.route)
+                },
+                onCancel = {
+                    viewModel.resetSession()
+                    navController.navigate(Screen.Standby.route) {
+                        popUpTo(Screen.Standby.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -86,13 +107,14 @@ fun AppNavGraph(
             val printerState by viewModel.printerState.collectAsState()
             OutputScreen(
                 photos = uiState.capturedPhotos,
-                selectedLayout = uiState.selectedLayout,
-                headerText = uiState.appSettings.headerText,
-                customLogoUri = uiState.appSettings.customLogoUri,
-                footerText = uiState.appSettings.footerText,
+                appSettings = uiState.appSettings,
+                layoutType = uiState.selectedLayoutType,
                 printerState = printerState,
-                onBack = {
-                    navController.popBackStack()
+                onCancel = {
+                    viewModel.resetSession()
+                    navController.navigate(Screen.Standby.route) {
+                        popUpTo(Screen.Standby.route) { inclusive = true }
+                    }
                 },
                 onPrintConfirmed = {
                     viewModel.printSession { success ->

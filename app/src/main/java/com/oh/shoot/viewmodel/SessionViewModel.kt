@@ -24,8 +24,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+import com.oh.shoot.ui.screens.LayoutType
+
 data class SessionUiState(
     val selectedLayout: Int = 1,
+    val selectedLayoutType: LayoutType = LayoutType.GRID_2X2,
     val capturedPhotos: List<Bitmap?> = emptyList(),
     val currentShotIndex: Int = 0,
     val copyCount: Int = 1,
@@ -141,16 +144,18 @@ class SessionViewModel @Inject constructor(
                 builder.bold(true).text(state.appSettings.headerText).bold(false).newline(1)
             }
 
-            val printableBitmaps = if (state.selectedLayout == 4) {
-                listOf(BitmapProcessor.combineBitmapsToGrid(photos.take(4), printWidth))
-            } else {
-                photos.map { bitmap -> BitmapProcessor.resize(bitmap, printWidth) }
-            }
+            // Combine photos based on layout
+            val gridBitmap = BitmapProcessor.combineBitmapsToGrid(
+                bitmaps = photos,
+                targetWidth = printWidth,
+                type = state.selectedLayoutType,
+                cornerRadius = state.appSettings.printedCornerRadius,
+                squareMode = state.appSettings.squareMode,
+                borderDesignId = state.appSettings.borderDesignId
+            )
 
-            printableBitmaps.forEach { bitmap ->
-                val raster = BitmapProcessor.convertToEscPosRasterDithered(bitmap, state.appSettings.contrastBoost)
-                builder.printBitmap(bitmap, raster).newline(1)
-            }
+            val raster = BitmapProcessor.convertToEscPosRasterDithered(gridBitmap, state.appSettings.contrastBoost)
+            builder.printBitmap(gridBitmap, raster).newline(1)
 
             builder.text(state.appSettings.footerText).newline(1)
             if (state.appSettings.autoCut) {
@@ -160,11 +165,12 @@ class SessionViewModel @Inject constructor(
             }
 
             val data = builder.build()
-
-            val savedAll = photos.mapIndexed { index, bitmap ->
+            
+            // Trigger gallery save
+            photos.forEachIndexed { index, bitmap ->
                 val timestamp = System.currentTimeMillis()
                 ImageUtils.saveToGallery(context, bitmap, "OhShoot_${timestamp}_$index")
-            }.all { it != null }
+            }
 
             var printSucceeded = true
             repeat(state.copyCount) {
@@ -191,11 +197,6 @@ class SessionViewModel @Inject constructor(
                 }
             }
 
-            if (!savedAll) {
-                _printerState.value = PrinterState.Error("Print sent, but failed to save one or more photos to gallery.")
-                printSucceeded = false
-            }
-
             _uiState.update { it.copy(isPrinting = false) }
             withContext(Dispatchers.Main) {
                 onFinished(printSucceeded)
@@ -203,10 +204,11 @@ class SessionViewModel @Inject constructor(
         }
     }
 
-    fun startSession(layout: Int) {
+    fun startSession(layout: Int, type: LayoutType) {
         _uiState.update { 
             it.copy(
                 selectedLayout = layout,
+                selectedLayoutType = type,
                 capturedPhotos = List(layout) { null },
                 currentShotIndex = 0,
                 sessionComplete = false,

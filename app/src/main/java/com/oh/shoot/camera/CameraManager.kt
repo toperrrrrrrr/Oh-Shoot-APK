@@ -53,16 +53,24 @@ class CameraManager(private val context: Context) {
         }, ContextCompat.getMainExecutor(context))
     }
 
-    fun takePhoto(onPhotoCaptured: (Bitmap) -> Unit) {
+    fun takePhoto(squareMode: Boolean = false, onPhotoCaptured: (Bitmap) -> Unit) {
         val imageCapture = imageCapture ?: return
 
         imageCapture.takePicture(
             cameraExecutor,
             object : ImageCapture.OnImageCapturedCallback() {
                 override fun onCaptureSuccess(image: ImageProxy) {
-                    val bitmap = imageToBitmap(image)
+                    var bitmap = imageToBitmap(image)
                     image.close()
+                    
                     if (bitmap != null) {
+                        if (squareMode) {
+                            val size = minOf(bitmap.width, bitmap.height)
+                            val x = (bitmap.width - size) / 2
+                            val y = (bitmap.height - size) / 2
+                            bitmap = Bitmap.createBitmap(bitmap, x, y, size, size)
+                        }
+                        
                         ContextCompat.getMainExecutor(context).execute {
                             onPhotoCaptured(bitmap)
                         }

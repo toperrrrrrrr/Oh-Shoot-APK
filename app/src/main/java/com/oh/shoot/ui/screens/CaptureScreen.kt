@@ -1,7 +1,10 @@
 package com.oh.shoot.ui.screens
 
 import android.Manifest
+import android.app.Activity
 import android.graphics.Bitmap
+import android.view.WindowManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
@@ -16,6 +19,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SwitchCamera
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -41,23 +49,40 @@ fun CaptureScreen(
     currentPhotoIndex: Int,
     cameraFacingFront: Boolean,
     mirrorPreview: Boolean,
+    squareMode: Boolean,
     soundsEnabled: Boolean,
+    ringLightEnabled: Boolean,
+    onCameraFacingChanged: (Boolean) -> Unit,
     onPhotoCaptured: (Bitmap) -> Unit,
     onAllPhotosCaptured: () -> Unit,
-    onBack: () -> Unit
+    onCancel: () -> Unit
 ) {
     val context = LocalContext.current
+    val activity = context as? Activity
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     
     val cameraManager = remember { CameraManager(context) }
-    val previewView = remember { PreviewView(context) }
+    val previewView = remember { 
+        PreviewView(context).apply {
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+        }
+    }
     val soundPlayer = remember { CaptureSoundPlayer(context) }
+
+    // Block standard back navigation
+    BackHandler {
+        // Do nothing, force use of Cancel button
+    }
 
     DisposableEffect(Unit) {
         onDispose {
             soundPlayer.release()
             cameraManager.shutdown()
+            // Reset brightness when leaving capture screen
+            activity?.window?.attributes = activity?.window?.attributes?.apply {
+                screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            }
         }
     }
 
@@ -94,20 +119,43 @@ fun CaptureScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(Color.Black)
+        .then(
+            if (ringLightEnabled) {
+                Modifier.border(20.dp, Color.White)
+            } else {
+                Modifier
+            }
+        )
+    ) {
         if (hasPermission) {
-            AndroidView(
-                factory = { previewView },
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(
-                        if (mirrorPreview) {
-                            Modifier.graphicsLayer(scaleX = -1f)
-                        } else {
-                            Modifier
-                        }
-                    )
-            )
+                    .padding(20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                AndroidView(
+                    factory = { previewView },
+                    modifier = Modifier
+                        .then(
+                            if (squareMode) {
+                                Modifier.aspectRatio(1f)
+                            } else {
+                                Modifier.fillMaxSize()
+                            }
+                        )
+                        .then(
+                            if (mirrorPreview) {
+                                Modifier.graphicsLayer(scaleX = -1f)
+                            } else {
+                                Modifier
+                            }
+                        )
+                )
+            }
         }
 
         // Overlays
@@ -120,7 +168,7 @@ fun CaptureScreen(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp)
+                .padding(bottom = 52.dp) // Adjusted for ring light
         ) {
             ShutterButton(
                 enabled = !isCapturing,
@@ -136,11 +184,21 @@ fun CaptureScreen(
                             delay(1000)
                         }
                         countdownValue = 0
+                        
+                        // Flash Effect & Max Brightness
+                        activity?.window?.attributes = activity?.window?.attributes?.apply {
+                            screenBrightness = 1f
+                        }
                         triggerFlash = true
+                        
                         if (soundsEnabled) {
                             soundPlayer.playShutter()
                         }
-                        cameraManager.takePhoto { bitmap ->
+                        cameraManager.takePhoto(squareMode = squareMode) { bitmap ->
+                            // Restore brightness
+                            activity?.window?.attributes = activity?.window?.attributes?.apply {
+                                screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                            }
                             onPhotoCaptured(bitmap)
                             isCapturing = false
                             if (currentPhotoIndex + 1 >= maxPhotos) {
@@ -150,6 +208,26 @@ fun CaptureScreen(
                     }
                 }
             )
+        }
+
+        // Camera Switch Button
+        if (!isCapturing) {
+            IconButton(
+                onClick = { onCameraFacingChanged(!cameraFacingFront) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 60.dp, end = 60.dp)
+                    .size(64.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SwitchCamera,
+                    contentDescription = "Switch Camera",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         }
 
         // Countdown Overlay
@@ -163,7 +241,8 @@ fun CaptureScreen(
                 Text(
                     text = countdownValue.toString(),
                     color = Color.White,
-                    fontSize = 120.sp,
+                    fontSize = 140.sp,
+                    fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.displayLarge
                 )
             }
@@ -177,15 +256,16 @@ fun CaptureScreen(
                 .background(Color.White)
         )
         
-        // Back Button
+        // Cancel Button (explicit reset)
         Text(
-            text = "Change layout",
-            color = Color.White.copy(alpha = 0.7f),
+            text = "CANCEL",
+            color = Color.White.copy(alpha = 0.8f),
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(24.dp)
-                .clickable { onBack() },
-            style = MaterialTheme.typography.bodyLarge
+                .padding(44.dp) // Adjusted for ring light
+                .clickable { onCancel() },
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold
         )
     }
 }

@@ -27,26 +27,53 @@ import androidx.compose.ui.unit.sp
 import com.oh.shoot.printer.PrinterState
 import com.oh.shoot.ui.theme.*
 import com.oh.shoot.util.ImageUtils
+import com.oh.shoot.domain.AppSettings
+import com.oh.shoot.BitmapProcessor
+import com.oh.shoot.ui.screens.LayoutType
+
+import androidx.activity.compose.BackHandler
 
 @Composable
 fun OutputScreen(
     photos: List<Bitmap?>,
-    selectedLayout: Int,
-    headerText: String,
-    customLogoUri: String?,
-    footerText: String,
+    appSettings: AppSettings,
+    layoutType: LayoutType,
     printerState: PrinterState,
-    onBack: () -> Unit,
+    onCancel: () -> Unit,
     onPrintConfirmed: () -> Unit
 ) {
-    val context = LocalContext.current
-    var headerLogo by remember(customLogoUri) { mutableStateOf<Bitmap?>(null) }
+    BackHandler {
+        // Block back press
+    }
 
-    LaunchedEffect(customLogoUri) {
-        headerLogo = customLogoUri?.let { uri ->
+    val context = LocalContext.current
+    var headerLogo by remember(appSettings.customLogoUri) { mutableStateOf<Bitmap?>(null) }
+    var previewLayoutBitmap by remember(photos, appSettings, layoutType) {
+        mutableStateOf<Bitmap?>(null)
+    }
+
+    LaunchedEffect(appSettings.customLogoUri) {
+        headerLogo = appSettings.customLogoUri?.let { uri ->
             ImageUtils.decodeBitmapFromUri(context, uri, 800)
         }
     }
+
+    LaunchedEffect(photos, appSettings, layoutType) {
+        val printable = photos.filterNotNull()
+        if (printable.isNotEmpty()) {
+            previewLayoutBitmap = BitmapProcessor.combineBitmapsToGrid(
+                bitmaps = printable,
+                targetWidth = 576,
+                type = layoutType,
+                cornerRadius = appSettings.printedCornerRadius,
+                squareMode = appSettings.squareMode,
+                borderDesignId = appSettings.borderDesignId
+            )
+        }
+    }
+
+    val headerText = appSettings.headerText
+    val footerText = appSettings.footerText
 
     Column(
         modifier = Modifier
@@ -130,55 +157,15 @@ fun OutputScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val printablePhotos = photos.filterNotNull()
-                if (selectedLayout == 4 && printablePhotos.size >= 4) {
-                    val firstFour = printablePhotos.take(4)
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            firstFour.take(2).forEach { bitmap ->
-                                Image(
-                                    bitmap = bitmap.asImageBitmap(),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            firstFour.drop(2).take(2).forEach { bitmap ->
-                                Image(
-                                    bitmap = bitmap.asImageBitmap(),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    printablePhotos.forEach { bitmap ->
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            contentScale = ContentScale.FillWidth
-                        )
-                    }
+                if (previewLayoutBitmap != null) {
+                    Image(
+                        bitmap = previewLayoutBitmap!!.asImageBitmap(),
+                        contentDescription = "Layout Preview",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        contentScale = ContentScale.FillWidth
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -200,19 +187,25 @@ fun OutputScreen(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             TextButton(
-                onClick = onBack,
+                onClick = onCancel,
                 modifier = Modifier.weight(1f).height(56.dp)
             ) {
-                Text("← EDIT", color = AccentGold)
+                Text("CANCEL", color = AccentGold, fontWeight = FontWeight.Bold)
             }
             
             Button(
                 onClick = onPrintConfirmed,
                 modifier = Modifier.weight(2f).height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Surface),
+                enabled = printerState is PrinterState.Ready,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AccentGold,
+                    contentColor = Surface,
+                    disabledContainerColor = Color.Gray,
+                    disabledContentColor = Color.White
+                ),
                 shape = RoundedCornerShape(28.dp)
             ) {
-                Text("PRINT & SAVE")
+                Text(if (printerState is PrinterState.Ready) "PRINT & SAVE" else "PRINTER NOT READY")
             }
         }
     }
