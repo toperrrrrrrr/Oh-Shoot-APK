@@ -19,6 +19,9 @@ lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 ksp = "1.9.24-1.0.20"
 composeCompiler = "1.5.14"
+uvccamera = "2.3.4"
+mockk = "1.13.10"
+turbine = "1.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -65,6 +68,12 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 
 # UVC Camera
+libuvccamera = { group = "com.github.jiangdongguo", name = "AndroidUSBCamera", version.ref = "uvccamera" }
+
+# Testing
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -20,6 +20,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
+        maven { url = uri("https://raw.githubusercontent.com/saki4510t/libcommon/master/repository/") }
     }
 }
 

@@ -1,0 +1,25 @@
+=== OH SHOOT! PHOTO BOOTH: FUTURE FEATURES & IMPROVEMENTS ===
+
+1. DSLR-Booth / Zip Template Import
+   - Allow users to import a `.zip` file containing an `overlay.png`, `background.png`, and a `coordinates.json` file.
+   - Automatically parse this into the `CustomTemplate` data class to rapidly deploy custom frames and branding.
+
+2. Cloud Gallery & QR Code Sharing
+   - Automatically upload finished photo grids to a cloud bucket (Firebase / AWS S3) in the background.
+   - Display a QR code on the `DoneScreen` (and optionally print it on the receipt) so users can scan and download their digital copies immediately.
+
+3. Boomerang / GIF Capture Mode
+   - Instead of just still photos, add a mode that captures 10-15 rapid frames and compiles them into an animated GIF or looping MP4.
+
+4. Chroma Key (Green Screen) Removal
+   - Add image post-processing that detects green/blue chroma key backgrounds and replaces them with a custom user-defined image or digital backdrop.
+
+5. Image Filters / LUTs (Color Grading)
+   - Currently, there is only a "Contrast Boost" setting. We can implement standard LUTs to give users "Black & White", "Vintage", "Sepia", or "Glamour" filter options before printing.
+
+6. Professional Print Server (CUPS / IPP) Support
+   - While we currently support Raw TCP (Port 9100) for ESC/POS receipt printers, many professional Dye-Sublimation printers (DNP, Sinfonia, Mitsubishi) require OS-level drivers. 
+   - Implementing an IPP (Internet Printing Protocol) client to talk directly to a Raspberry Pi running CUPS would allow native Dye-Sub photo printing over Wi-Fi.
+
+7. Architecture / DI Cleanup
+   - Refactor `BluetoothPrinter` and `NetworkPrinterManager` from being static `object` Singletons to scoped services injected via Hilt. This will make unit testing printer logic much easier.
