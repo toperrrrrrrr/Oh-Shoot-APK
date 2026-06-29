@@ -1,0 +1,14 @@
+Bugs =- hunt them down.
+Business side 
+
+When using the app, and no printer is connected, I want to have an option to still use the app, and save the photos, in the intention of printing them later
+
+The problem is, I have this business, and I want to use my app, but I can't always use it, because the printer is not connected. SO I want to be able to use it without the printer, and save the photos, and print them later.
+
+
+I want the layout of the photos saved be the same as the one being printed. As if the printed photo was recreated digitally. 
+
+For example, if the layout is a 2x2 grid, and the user takes 4 photos, the app should save the 4 photos in a way that they can be printed as a 2x2 grid with the white background and also black and white photo. 
+
+The photo preview before the printing page is not showing the images/ layout that it will be printed to. They are just stacked to each other. I want it to be the same as the layout that it will be printed to. 
+

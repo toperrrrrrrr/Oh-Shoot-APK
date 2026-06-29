@@ -23,12 +23,43 @@ fun UvcCameraView(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     
+    var triggerFallback by remember { mutableStateOf(false) }
+
+    LaunchedEffect(triggerFallback) {
+        if (triggerFallback) {
+            onFallback()
+        }
+    }
+
     val textureView = remember { 
         TextureView(context).apply {
             layoutParams = android.view.ViewGroup.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT
             )
+            addOnLayoutChangeListener { v, left, top, right, bottom, _, _, _, _ ->
+                val viewWidth = right - left
+                val viewHeight = bottom - top
+                if (viewWidth > 0 && viewHeight > 0) {
+                    val videoWidth = 1920f
+                    val videoHeight = 1080f
+                    
+                    val matrix = android.graphics.Matrix()
+                    val viewRect = android.graphics.RectF(0f, 0f, viewWidth.toFloat(), viewHeight.toFloat())
+                    val bufferRect = android.graphics.RectF(0f, 0f, videoWidth, videoHeight)
+                    
+                    val centerX = viewRect.centerX()
+                    val centerY = viewRect.centerY()
+                    
+                    bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY())
+                    matrix.setRectToRect(viewRect, bufferRect, android.graphics.Matrix.ScaleToFit.FILL)
+                    
+                    val scale = maxOf(viewWidth / videoWidth, viewHeight / videoHeight)
+                    matrix.postScale(scale, scale, centerX, centerY)
+                    
+                    (v as TextureView).setTransform(matrix)
+                }
+            }
         }
     }
     
@@ -50,7 +81,7 @@ fun UvcCameraView(
                 // USB device unplugged
                 coroutineScope.launch(Dispatchers.Main) {
                     Toast.makeText(context, "External camera disconnected", Toast.LENGTH_SHORT).show()
-                    onFallback()
+                    triggerFallback = true
                 }
             }
             
@@ -89,7 +120,7 @@ fun UvcCameraView(
                 } catch (e: Exception) {
                     coroutineScope.launch(Dispatchers.Main) {
                         Toast.makeText(context, "Failed to initialize external camera", Toast.LENGTH_SHORT).show()
-                        onFallback()
+                        triggerFallback = true
                     }
                 }
             }
@@ -104,7 +135,7 @@ fun UvcCameraView(
             
             override fun onCancel(device: UsbDevice) {
                 coroutineScope.launch(Dispatchers.Main) {
-                    onFallback()
+                    triggerFallback = true
                 }
             }
         })
@@ -118,7 +149,7 @@ fun UvcCameraView(
             // No USB camera found, fallback immediately
             coroutineScope.launch(Dispatchers.Main) {
                 Toast.makeText(context, "No external camera detected. Check OTG cable.", Toast.LENGTH_SHORT).show()
-                onFallback()
+                triggerFallback = true
             }
         }
         

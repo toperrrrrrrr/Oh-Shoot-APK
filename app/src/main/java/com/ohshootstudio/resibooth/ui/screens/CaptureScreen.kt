@@ -42,6 +42,7 @@ import com.ohshootstudio.resibooth.camera.CameraManager
 import com.ohshootstudio.resibooth.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 
 @Composable
 fun CaptureScreen(
@@ -78,6 +79,7 @@ fun CaptureScreen(
     DisposableEffect(Unit) {
         onDispose {
             soundPlayer.release()
+            cameraManager.unbindAll()
             cameraManager.shutdown()
             // Reset brightness when leaving capture screen
             activity?.window?.attributes = activity?.window?.attributes?.apply {
@@ -212,55 +214,61 @@ fun CaptureScreen(
                         isCapturing = true
                         // Countdown 3, 2, 1
                         for (i in 3 downTo 1) {
+                            if (!isActive) return@launch
                             countdownValue = i
                             if (soundsEnabled) {
                                 soundPlayer.playTick()
                             }
                             delay(1000)
                         }
+                        if (!isActive) return@launch
                         countdownValue = 0
                         
-                        // Flash Effect & Max Brightness
-                        activity?.window?.attributes = activity?.window?.attributes?.apply {
-                            screenBrightness = 1f
-                        }
-                        triggerFlash = true
-                        
-                        if (soundsEnabled) {
-                            soundPlayer.playShutter()
-                        }
-                        
-                        if (cameraLensFacing == 2) {
-                            var finalBitmap = uvcTextureView?.bitmap
+                        try {
+                            // Flash Effect & Max Brightness
                             activity?.window?.attributes = activity?.window?.attributes?.apply {
-                                screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                                screenBrightness = 1f
                             }
-                            if (finalBitmap != null) {
-                                if (squareMode) {
-                                    val width = finalBitmap.width
-                                    val height = finalBitmap.height
-                                    val minDim = minOf(width, height)
-                                    val xOffset = (width - minDim) / 2
-                                    val yOffset = (height - minDim) / 2
-                                    finalBitmap = Bitmap.createBitmap(finalBitmap, xOffset, yOffset, minDim, minDim)
+                            triggerFlash = true
+                            
+                            if (soundsEnabled) {
+                                soundPlayer.playShutter()
+                            }
+                            
+                            if (cameraLensFacing == 2) {
+                                var finalBitmap = uvcTextureView?.bitmap
+                                if (finalBitmap != null) {
+                                    if (squareMode) {
+                                        val width = finalBitmap.width
+                                        val height = finalBitmap.height
+                                        val minDim = minOf(width, height)
+                                        val xOffset = (width - minDim) / 2
+                                        val yOffset = (height - minDim) / 2
+                                        val cropped = Bitmap.createBitmap(finalBitmap, xOffset, yOffset, minDim, minDim)
+                                        if (cropped != finalBitmap) {
+                                            finalBitmap.recycle()
+                                        }
+                                        finalBitmap = cropped
+                                    }
+                                    onPhotoCaptured(finalBitmap)
                                 }
-                                onPhotoCaptured(finalBitmap)
-                            }
-                            isCapturing = false
-                            if (currentPhotoIndex + 1 >= maxPhotos) {
-                                onAllPhotosCaptured()
-                            }
-                        } else {
-                            cameraManager.takePhoto(squareMode = squareMode) { bitmap ->
-                                // Restore brightness
-                                activity?.window?.attributes = activity?.window?.attributes?.apply {
-                                    screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-                                }
-                                onPhotoCaptured(bitmap)
                                 isCapturing = false
                                 if (currentPhotoIndex + 1 >= maxPhotos) {
                                     onAllPhotosCaptured()
                                 }
+                            } else {
+                                cameraManager.takePhoto(squareMode = squareMode) { bitmap ->
+                                    onPhotoCaptured(bitmap)
+                                    isCapturing = false
+                                    if (currentPhotoIndex + 1 >= maxPhotos) {
+                                        onAllPhotosCaptured()
+                                    }
+                                }
+                            }
+                        } finally {
+                            // Restore brightness
+                            activity?.window?.attributes = activity?.window?.attributes?.apply {
+                                screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
                             }
                         }
                     }

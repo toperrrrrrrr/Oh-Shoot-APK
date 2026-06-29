@@ -17,6 +17,7 @@ class CameraManager(private val context: Context) {
 
     private var imageCapture: ImageCapture? = null
     private var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private var cameraProvider: ProcessCameraProvider? = null
 
     fun startCamera(
         lifecycleOwner: LifecycleOwner,
@@ -28,6 +29,7 @@ class CameraManager(private val context: Context) {
 
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            this.cameraProvider = cameraProvider
 
             val preview = Preview.Builder()
                 .build()
@@ -92,7 +94,11 @@ class CameraManager(private val context: Context) {
                             val size = minOf(bitmap.width, bitmap.height)
                             val x = (bitmap.width - size) / 2
                             val y = (bitmap.height - size) / 2
-                            bitmap = Bitmap.createBitmap(bitmap, x, y, size, size)
+                            val cropped = Bitmap.createBitmap(bitmap, x, y, size, size)
+                            if (cropped != bitmap) {
+                                bitmap.recycle()
+                            }
+                            bitmap = cropped
                         }
                         
                         ContextCompat.getMainExecutor(context).execute {
@@ -127,6 +133,14 @@ class CameraManager(private val context: Context) {
 
     fun shutdown() {
         cameraExecutor.shutdown()
+    }
+
+    fun unbindAll() {
+        try {
+            cameraProvider?.unbindAll()
+        } catch (e: Exception) {
+            Log.e("CameraManager", "Failed to unbind camera provider", e)
+        }
     }
 }
 
