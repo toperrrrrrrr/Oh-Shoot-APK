@@ -37,7 +37,7 @@ List down the missing features that is a must have.
 
 
 QR codes. Online hosting of photos. I am not sure where to save these. How to save these for online usage.
-
+Firebase sounds like a good plan. make sure there is a lifecycle for the saved images to clear them out and not get charged.
 
 IF the license page is showing up, 
 
@@ -59,3 +59,9 @@ Resize logo
 
 Settings button is overlapping with the system UI and cancel button on layout. 
 
+
+Add WOB as theme based logo ICon, if the theme is dark mode, invert the icon, make sure the settings have options to set the themes to dark mode, light mode or device. 
+Themes doesnt change the pulsing start button color. 
+
+
+Tidy Up the  settings UI. 

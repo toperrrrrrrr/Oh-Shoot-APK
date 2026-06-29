@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.ohshootstudio.resibooth.navigation.AppNavGraph
 import com.ohshootstudio.resibooth.printer.PrinterState
 import com.ohshootstudio.resibooth.ui.components.SettingsPanel
@@ -60,11 +61,15 @@ class MainActivity : ComponentActivity() {
                             is PrinterState.Error -> Color(0xFFF44336) // Red
                         }
 
-                        if (!isEditingStandby && !isEditingLayoutDesigner) {
+                        val navBackStackEntry by navController.currentBackStackEntryAsState()
+                        val currentRoute = navBackStackEntry?.destination?.route
+
+                        if (!isEditingStandby && !isEditingLayoutDesigner && currentRoute == com.ohshootstudio.resibooth.navigation.Screen.Standby.route) {
                             Row(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .padding(8.dp),
+                                    .statusBarsPadding()
+                                    .padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(

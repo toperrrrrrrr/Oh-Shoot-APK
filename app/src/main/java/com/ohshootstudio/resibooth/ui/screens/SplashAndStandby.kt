@@ -384,7 +384,8 @@ fun StandbyScreen(
                         .build(),
                     contentDescription = "Custom Logo",
                     modifier = Modifier
-                        .height(120.dp)
+                        .fillMaxWidth(0.6f)
+                        .heightIn(max = 200.dp)
                         .padding(bottom = 32.dp)
                 )
             }
