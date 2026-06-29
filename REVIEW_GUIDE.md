@@ -4,7 +4,7 @@ This document lists the main sections, topics, and source files to review togeth
 
 ---
 
-## 1. 📸 Taking Photos & Capture Flow
+## 1. 📸 [REVIEWED] Taking Photos & Capture Flow
 This section covers how the app controls the device cameras, manages the live preview, plays sound effects, and handles the photo-taking countdown sequence.
 *   **Key Files:**
     *   [CameraManager.kt](file:///c:/Users/Nori/Desktop/OhShoot/app/src/main/java/com/ohshootstudio/resibooth/camera/CameraManager.kt) — CameraX integration, binding preview and photo capture.
@@ -15,7 +15,7 @@ This section covers how the app controls the device cameras, manages the live pr
 
 ---
 
-## 2. 🎨 Grid Layout & Image Processing
+## 2. 🎨 [REVIEWED] Grid Layout & Image Processing
 This section covers how captured bitmaps are resized, cropped, bordered, and compiled into print-ready collages.
 *   **Key Files:**
     *   [BitmapProcessor.kt](file:///c:/Users/Nori/Desktop/OhShoot/app/src/main/java/com/ohshootstudio/resibooth/BitmapProcessor.kt) — The core engine for composing grids (`GRID_2X2`, `GRID_2X3`, `HYBRID`, strip layouts, etc.).

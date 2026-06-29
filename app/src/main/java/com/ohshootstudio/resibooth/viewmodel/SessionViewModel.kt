@@ -131,21 +131,43 @@ class SessionViewModel @Inject constructor(
             return
         }
 
-        if (!ensurePrinterReady()) {
-            Log.e("SessionViewModel", "Print blocked: Printer is not ready")
-            onFinished(false)
-            return
-        }
-
         _uiState.update { it.copy(isPrinting = true) }
 
         viewModelScope.launch(Dispatchers.IO) {
             val state = _uiState.value
+            val printWidth = if (state.appSettings.paperWidth80mm) 576 else 384
+            val customTemplate = com.ohshootstudio.resibooth.domain.CustomTemplate.fromJsonString(state.appSettings.customLayoutTemplate)
+            
+            var gridBitmap = state.previewBitmap ?: BitmapProcessor.combineBitmapsToGrid(
+                context = context,
+                bitmaps = photos,
+                targetWidth = printWidth,
+                type = state.selectedLayoutType,
+                cornerRadius = state.appSettings.printedCornerRadius,
+                squareMode = state.appSettings.squareMode,
+                borderDesignId = state.appSettings.borderDesignId,
+                customTemplate = customTemplate
+            ).let { BitmapProcessor.toGrayscale(it) }
+
+            // Trigger gallery save of the grid layout unconditionally
+            if (state.appSettings.saveToDevice) {
+                val timestamp = System.currentTimeMillis()
+                ImageUtils.saveToGallery(context, gridBitmap, "OhShoot_Layout_$timestamp")
+            }
+
+            if (!ensurePrinterReady()) {
+                Log.e("SessionViewModel", "Print blocked: Printer is not ready. Saved layout to device.")
+                _uiState.update { it.copy(isPrinting = false) }
+                withContext(Dispatchers.Main) {
+                    onFinished(false)
+                }
+                return@launch
+            }
+
             val builder = EscPosBuilder()
             builder.init()
             builder.center()
 
-            val printWidth = if (state.appSettings.paperWidth80mm) 576 else 384
             val logoUri = state.appSettings.customLogoUri
             val headerLogo = logoUri?.let {
                 ImageUtils.decodeBitmapFromUri(context, it, printWidth)
@@ -161,18 +183,6 @@ class SessionViewModel @Inject constructor(
                 builder.bold(true).text(state.appSettings.headerText).bold(false).newline(1)
             }
 
-            // Combine photos based on layout
-            val customTemplate = com.ohshootstudio.resibooth.domain.CustomTemplate.fromJsonString(state.appSettings.customLayoutTemplate)
-            val gridBitmap = BitmapProcessor.combineBitmapsToGrid(
-                bitmaps = photos,
-                targetWidth = printWidth,
-                type = state.selectedLayoutType,
-                cornerRadius = state.appSettings.printedCornerRadius,
-                squareMode = state.appSettings.squareMode,
-                borderDesignId = state.appSettings.borderDesignId,
-                customTemplate = customTemplate
-            )
-
             val raster = BitmapProcessor.convertToEscPosRasterDithered(gridBitmap, state.appSettings.contrastBoost)
             builder.printBitmap(gridBitmap, raster).newline(1)
 
@@ -184,14 +194,6 @@ class SessionViewModel @Inject constructor(
             }
 
             val data = builder.build()
-            
-            // Trigger gallery save
-            if (state.appSettings.saveToDevice) {
-                photos.forEachIndexed { index, bitmap ->
-                    val timestamp = System.currentTimeMillis()
-                    ImageUtils.saveToGallery(context, bitmap, "OhShoot_${timestamp}_$index")
-                }
-            }
 
             var printSucceeded = true
             when (state.appSettings.printerConnectionType) {
@@ -290,7 +292,8 @@ class SessionViewModel @Inject constructor(
 
             val printWidth = if (state.appSettings.paperWidth80mm) 576 else 384
             val customTemplate = com.ohshootstudio.resibooth.domain.CustomTemplate.fromJsonString(state.appSettings.customLayoutTemplate)
-            val gridBitmap = BitmapProcessor.combineBitmapsToGrid(
+            var gridBitmap = BitmapProcessor.combineBitmapsToGrid(
+                context = context,
                 bitmaps = photos,
                 targetWidth = printWidth,
                 type = state.selectedLayoutType,
@@ -299,6 +302,9 @@ class SessionViewModel @Inject constructor(
                 borderDesignId = state.appSettings.borderDesignId,
                 customTemplate = customTemplate
             )
+            
+            gridBitmap = BitmapProcessor.toGrayscale(gridBitmap)
+            
             _uiState.update { it.copy(previewBitmap = gridBitmap) }
         }
     }

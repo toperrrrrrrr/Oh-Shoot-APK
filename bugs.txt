@@ -1,25 +1,25 @@
 === OH SHOOT! PHOTO BOOTH: BUG REPORT ===
 
-1. Potential OutOfMemoryError in ImageUtils.kt
+1. [RESOLVED] Potential OutOfMemoryError in ImageUtils.kt
    - Location: `calculateInSampleSize` in `ImageUtils.kt`
    - Issue: The `while` loop checks `(halfHeight / inSampleSize >= reqWidth && halfWidth / inSampleSize >= reqWidth)`. Because it uses `&&`, if one dimension falls below `reqWidth` but the other remains massively larger (e.g. a very wide panorama), the loop stops incrementing the sample size. 
    - Impact: This will cause `decodeStream` to load an image that is significantly larger than intended in memory, potentially crashing the app with an `OutOfMemoryError`.
    - Fix: Change the condition to use `||` or compute based on the maximum dimension.
 
-2. TCP Socket Race Conditions in NetworkPrinterManager.kt
+2. [RESOLVED] TCP Socket Race Conditions in NetworkPrinterManager.kt
    - Location: `NetworkPrinterManager.printData`
    - Issue: Every call to `printData` opens a new `Socket()` connection to the printer's Port 9100.
    - Impact: If the user taps the Print button multiple times rapidly, or if multiple print jobs queue up, it will attempt to open multiple concurrent sockets. Most thermal printers only accept 1 concurrent TCP connection and will silently reject the others, dropping print jobs.
    - Fix: Implement a coroutine `Mutex` lock in the manager to queue print jobs, ensuring only one socket connection is active at a time.
 
-3. Bluetooth SecurityException Risk
+3. [RESOLVED] Bluetooth SecurityException Risk
    - Location: `BluetoothPrinter.kt`
    - Issue: In `testConnection` and `printImage`, the app calls `adapter?.cancelDiscovery()`. On Android 12+ (SDK 31+), `cancelDiscovery()` requires the `BLUETOOTH_SCAN` permission. 
    - Impact: While the app checks for `BLUETOOTH_CONNECT` permission via the UI, it doesn't strictly verify `BLUETOOTH_SCAN` in all places before calling cancel discovery. If a device revokes `BLUETOOTH_SCAN`, the app will crash with a `SecurityException`.
    - Fix: Always wrap `cancelDiscovery()` in a try-catch block for SecurityExceptions, or explicitly enforce `BLUETOOTH_SCAN` in the permission launcher.
 
-4. Camera Fallback Side Effects
-   - Location: `CaptureScreen.kt`
-   - Issue: If the UVC external camera is unplugged mid-session, the `onFallback` lambda fires `onCameraFacingChanged(0)` from within a composable block.
-   - Impact: Firing state changes directly during recomposition can cause infinite recomposition loops or skipped frames. 
-   - Fix: Wrap the fallback callback in a `LaunchedEffect` or `CoroutineScope` to ensure it fires safely outside the recomposition phase.
+4. [RESOLVED] Camera Fallback Side Effects
+    - Location: `CaptureScreen.kt`
+    - Issue: If the UVC external camera is unplugged mid-session, the `onFallback` lambda fires `onCameraFacingChanged(0)` from within a composable block.
+    - Impact: Firing state changes directly during recomposition can cause infinite recomposition loops or skipped frames. 
+    - Fix: Wrap the fallback callback in a `LaunchedEffect` or `CoroutineScope` to ensure it fires safely outside the recomposition phase.

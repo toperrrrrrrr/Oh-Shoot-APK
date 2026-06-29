@@ -65,12 +65,14 @@ fun OutputScreen(
         val printable = photos.filterNotNull()
         if (printable.isNotEmpty()) {
             previewLayoutBitmap = BitmapProcessor.combineBitmapsToGrid(
+                context = context,
                 bitmaps = printable,
                 targetWidth = 576,
                 type = layoutType,
                 cornerRadius = appSettings.printedCornerRadius,
                 squareMode = appSettings.squareMode,
-                borderDesignId = appSettings.borderDesignId
+                borderDesignId = appSettings.borderDesignId,
+                customTemplate = com.ohshootstudio.resibooth.domain.CustomTemplate.fromJsonString(appSettings.customLayoutTemplate)
             )
         }
     }

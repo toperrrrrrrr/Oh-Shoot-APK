@@ -24,6 +24,9 @@ import com.ohshootstudio.resibooth.ui.theme.AccentCream
 import com.ohshootstudio.resibooth.ui.theme.AccentGold
 import com.ohshootstudio.resibooth.ui.theme.Background
 import com.ohshootstudio.resibooth.ui.theme.Surface
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.alpha
 import java.util.UUID
 
 @Composable
@@ -34,9 +37,19 @@ fun LayoutDesignerScreen(
 ) {
     var frames by remember { mutableStateOf(initialTemplate.frames) }
     var aspectRatio by remember { mutableStateOf(initialTemplate.aspectRatio) }
+    var backgroundUri by remember { mutableStateOf(initialTemplate.backgroundUri) }
+    var overlayUri by remember { mutableStateOf(initialTemplate.overlayUri) }
     var selectedFrameId by remember { mutableStateOf<String?>(null) }
     
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+
+    val bgLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri -> if (uri != null) backgroundUri = uri.toString() }
+
+    val overlayLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri -> if (uri != null) overlayUri = uri.toString() }
 
     Column(
         modifier = Modifier
@@ -55,7 +68,9 @@ fun LayoutDesignerScreen(
                 IconButton(onClick = onCancel) {
                     Icon(Icons.Default.Close, contentDescription = "Cancel", tint = Color.White)
                 }
-                IconButton(onClick = { onSave(CustomTemplate(frames, aspectRatio)) }) {
+                IconButton(onClick = { 
+                    onSave(CustomTemplate(frames, aspectRatio, backgroundUri, overlayUri)) 
+                }) {
                     Icon(Icons.Default.Save, contentDescription = "Save", tint = AccentGold)
                 }
             }
@@ -89,6 +104,20 @@ fun LayoutDesignerScreen(
                 Icon(Icons.Default.Add, contentDescription = "Add Frame")
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Add Photo Slot (${frames.size}/6)")
+            }
+            
+            OutlinedButton(
+                onClick = { bgLauncher.launch("image/*") },
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+            ) {
+                Text(if (backgroundUri != null) "Change BG" else "Add BG")
+            }
+            
+            OutlinedButton(
+                onClick = { overlayLauncher.launch("image/*") },
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+            ) {
+                Text(if (overlayUri != null) "Change Overlay" else "Add Overlay")
             }
 
             if (selectedFrameId != null) {
@@ -135,6 +164,14 @@ fun LayoutDesignerScreen(
                         }
                     }
             ) {
+                if (backgroundUri != null) {
+                    AsyncImage(
+                        model = backgroundUri,
+                        contentDescription = "Background",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.FillBounds
+                    )
+                }
                 frames.forEach { frame ->
                     val isSelected = frame.id == selectedFrameId
                     val pixelX = frame.x * canvasSize.width
@@ -179,6 +216,15 @@ fun LayoutDesignerScreen(
                             style = MaterialTheme.typography.titleLarge
                         )
                     }
+                }
+                
+                if (overlayUri != null) {
+                    AsyncImage(
+                        model = overlayUri,
+                        contentDescription = "Overlay",
+                        modifier = Modifier.fillMaxSize().alpha(0.6f),
+                        contentScale = ContentScale.FillBounds
+                    )
                 }
             }
         }

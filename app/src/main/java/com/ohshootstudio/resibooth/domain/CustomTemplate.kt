@@ -35,7 +35,9 @@ data class CustomFrame(
 
 data class CustomTemplate(
     val frames: List<CustomFrame> = emptyList(),
-    val aspectRatio: Float = 1.5f // Default 1.5 (e.g. 600x900)
+    val aspectRatio: Float = 1.5f, // Default 1.5 (e.g. 600x900)
+    val backgroundUri: String? = null,
+    val overlayUri: String? = null
 ) {
     fun toJsonString(): String {
         val obj = JSONObject()
@@ -43,6 +45,8 @@ data class CustomTemplate(
         frames.forEach { framesArray.put(it.toJson()) }
         obj.put("frames", framesArray)
         obj.put("aspectRatio", aspectRatio.toDouble())
+        if (backgroundUri != null) obj.put("backgroundUri", backgroundUri)
+        if (overlayUri != null) obj.put("overlayUri", overlayUri)
         return obj.toString()
     }
 
@@ -57,7 +61,9 @@ data class CustomTemplate(
                     frames.add(CustomFrame.fromJson(framesArray.getJSONObject(i)))
                 }
                 val aspectRatio = if (obj.has("aspectRatio")) obj.getDouble("aspectRatio").toFloat() else 1.5f
-                CustomTemplate(frames, aspectRatio)
+                val backgroundUri = if (obj.has("backgroundUri")) obj.getString("backgroundUri") else null
+                val overlayUri = if (obj.has("overlayUri")) obj.getString("overlayUri") else null
+                CustomTemplate(frames, aspectRatio, backgroundUri, overlayUri)
             } catch (e: Exception) {
                 CustomTemplate()
             }

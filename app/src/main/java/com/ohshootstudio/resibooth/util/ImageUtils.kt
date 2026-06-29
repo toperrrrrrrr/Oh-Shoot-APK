@@ -30,9 +30,8 @@ object ImageUtils {
         val (height, width) = options.outHeight to options.outWidth
         var inSampleSize = 1
         if (height > reqWidth || width > reqWidth) {
-            val halfHeight = height / 2
-            val halfWidth = width / 2
-            while (halfHeight / inSampleSize >= reqWidth || halfWidth / inSampleSize >= reqWidth) {
+            val halfMax = maxOf(height, width) / 2
+            while (halfMax / inSampleSize >= reqWidth) {
                 inSampleSize *= 2
             }
         }
@@ -43,6 +42,27 @@ object ImageUtils {
         if (bitmap.width <= targetWidth) return bitmap
         val targetHeight = (targetWidth.toDouble() / bitmap.width * bitmap.height).toInt()
         return Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
+    }
+
+    fun cropToAspectRatio(bitmap: Bitmap, targetAspectRatio: Float): Bitmap {
+        val currentRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+        if (kotlin.math.abs(currentRatio - targetAspectRatio) < 0.01f) {
+            return bitmap
+        }
+        var newWidth = bitmap.width
+        var newHeight = bitmap.height
+
+        if (currentRatio > targetAspectRatio) {
+            // Image is too wide, crop width
+            newWidth = (bitmap.height * targetAspectRatio).toInt()
+        } else {
+            // Image is too tall, crop height
+            newHeight = (bitmap.width / targetAspectRatio).toInt()
+        }
+        val xOffset = (bitmap.width - newWidth) / 2
+        val yOffset = (bitmap.height - newHeight) / 2
+
+        return Bitmap.createBitmap(bitmap, xOffset, yOffset, newWidth, newHeight)
     }
 
     /**

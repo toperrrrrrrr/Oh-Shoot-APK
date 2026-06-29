@@ -77,9 +77,25 @@ object BitmapProcessor {
     }
 
     /**
+     * Converts a bitmap to grayscale.
+     */
+    fun toGrayscale(bitmap: Bitmap): Bitmap {
+        val output = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val paint = Paint()
+        val colorMatrix = android.graphics.ColorMatrix()
+        colorMatrix.setSaturation(0f)
+        val filter = android.graphics.ColorMatrixColorFilter(colorMatrix)
+        paint.colorFilter = filter
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+        return output
+    }
+
+    /**
      * Combines multiple bitmaps into a grid based on LayoutType.
      */
     fun combineBitmapsToGrid(
+        context: android.content.Context? = null,
         bitmaps: List<Bitmap>, 
         targetWidth: Int, 
         type: LayoutType,
@@ -98,69 +114,80 @@ object BitmapProcessor {
             b
         }
 
+        val padding = (targetWidth * 0.02f).toInt()
+
         return when (type) {
             LayoutType.SINGLE -> {
+                val innerWidth = targetWidth - (2 * padding)
                 val firstBmp = processedBitmaps[0]
-                val scaledHeight = (targetWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
+                val scaledHeight = (innerWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
+                val totalHeight = scaledHeight + (2 * padding)
                 
-                val result = Bitmap.createBitmap(targetWidth, scaledHeight, Bitmap.Config.ARGB_8888)
+                val result = Bitmap.createBitmap(targetWidth, totalHeight, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(result)
                 canvas.drawColor(Color.WHITE)
                 
-                val scaled = Bitmap.createScaledBitmap(firstBmp, targetWidth, scaledHeight, true)
-                canvas.drawBitmap(scaled, 0f, 0f, null)
+                val scaled = Bitmap.createScaledBitmap(firstBmp, innerWidth, scaledHeight, true)
+                canvas.drawBitmap(scaled, padding.toFloat(), padding.toFloat(), null)
                 result
             }
             LayoutType.STRIP_2 -> {
+                val innerWidth = targetWidth - (2 * padding)
                 val firstBmp = processedBitmaps[0]
-                val scaledHeight = (targetWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
-                val totalHeight = 2 * scaledHeight
+                val scaledHeight = (innerWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
+                val totalHeight = (2 * scaledHeight) + (3 * padding)
                 
                 val result = Bitmap.createBitmap(targetWidth, totalHeight, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(result)
                 canvas.drawColor(Color.WHITE)
                 
                 processedBitmaps.take(2).forEachIndexed { index, bitmap ->
-                    val scaled = Bitmap.createScaledBitmap(bitmap, targetWidth, scaledHeight, true)
-                    canvas.drawBitmap(scaled, 0f, (index * scaledHeight).toFloat(), null)
+                    val scaled = Bitmap.createScaledBitmap(bitmap, innerWidth, scaledHeight, true)
+                    val y = padding + (index * (scaledHeight + padding))
+                    canvas.drawBitmap(scaled, padding.toFloat(), y.toFloat(), null)
                 }
                 result
             }
             LayoutType.STRIP_3 -> {
+                val innerWidth = targetWidth - (2 * padding)
                 val firstBmp = processedBitmaps[0]
-                val scaledHeight = (targetWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
-                val totalHeight = 3 * scaledHeight
+                val scaledHeight = (innerWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
+                val totalHeight = (3 * scaledHeight) + (4 * padding)
                 
                 val result = Bitmap.createBitmap(targetWidth, totalHeight, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(result)
                 canvas.drawColor(Color.WHITE)
                 
                 processedBitmaps.take(3).forEachIndexed { index, bitmap ->
-                    val scaled = Bitmap.createScaledBitmap(bitmap, targetWidth, scaledHeight, true)
-                    canvas.drawBitmap(scaled, 0f, (index * scaledHeight).toFloat(), null)
+                    val scaled = Bitmap.createScaledBitmap(bitmap, innerWidth, scaledHeight, true)
+                    val y = padding + (index * (scaledHeight + padding))
+                    canvas.drawBitmap(scaled, padding.toFloat(), y.toFloat(), null)
                 }
                 result
             }
             LayoutType.STRIP_4 -> {
+                val innerWidth = targetWidth - (2 * padding)
                 val firstBmp = processedBitmaps[0]
-                val scaledHeight = (targetWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
-                val totalHeight = 4 * scaledHeight
+                val scaledHeight = (innerWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
+                val totalHeight = (4 * scaledHeight) + (5 * padding)
                 
                 val result = Bitmap.createBitmap(targetWidth, totalHeight, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(result)
                 canvas.drawColor(Color.WHITE)
                 
                 processedBitmaps.take(4).forEachIndexed { index, bitmap ->
-                    val scaled = Bitmap.createScaledBitmap(bitmap, targetWidth, scaledHeight, true)
-                    canvas.drawBitmap(scaled, 0f, (index * scaledHeight).toFloat(), null)
+                    val scaled = Bitmap.createScaledBitmap(bitmap, innerWidth, scaledHeight, true)
+                    val y = padding + (index * (scaledHeight + padding))
+                    canvas.drawBitmap(scaled, padding.toFloat(), y.toFloat(), null)
                 }
                 result
             }
             LayoutType.GRID_2X2 -> {
-                val colWidth = targetWidth / 2
+                val innerWidth = targetWidth - (3 * padding)
+                val colWidth = innerWidth / 2
                 val firstBmp = processedBitmaps[0]
                 val scaledHeight = (colWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
-                val totalHeight = 2 * scaledHeight
+                val totalHeight = (2 * scaledHeight) + (3 * padding)
                 
                 val result = Bitmap.createBitmap(targetWidth, totalHeight, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(result)
@@ -170,15 +197,18 @@ object BitmapProcessor {
                     val row = index / 2
                     val col = index % 2
                     val scaled = Bitmap.createScaledBitmap(bitmap, colWidth, scaledHeight, true)
-                    canvas.drawBitmap(scaled, (col * colWidth).toFloat(), (row * scaledHeight).toFloat(), null)
+                    val x = padding + (col * (colWidth + padding))
+                    val y = padding + (row * (scaledHeight + padding))
+                    canvas.drawBitmap(scaled, x.toFloat(), y.toFloat(), null)
                 }
                 result
             }
             LayoutType.GRID_2X3 -> {
-                val colWidth = targetWidth / 2
+                val innerWidth = targetWidth - (3 * padding)
+                val colWidth = innerWidth / 2
                 val firstBmp = processedBitmaps[0]
                 val scaledHeight = (colWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
-                val totalHeight = 3 * scaledHeight
+                val totalHeight = (3 * scaledHeight) + (4 * padding)
                 
                 val result = Bitmap.createBitmap(targetWidth, totalHeight, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(result)
@@ -188,15 +218,18 @@ object BitmapProcessor {
                     val row = index / 2
                     val col = index % 2
                     val scaled = Bitmap.createScaledBitmap(bitmap, colWidth, scaledHeight, true)
-                    canvas.drawBitmap(scaled, (col * colWidth).toFloat(), (row * scaledHeight).toFloat(), null)
+                    val x = padding + (col * (colWidth + padding))
+                    val y = padding + (row * (scaledHeight + padding))
+                    canvas.drawBitmap(scaled, x.toFloat(), y.toFloat(), null)
                 }
                 result
             }
             LayoutType.GRID_2X4 -> {
-                val colWidth = targetWidth / 2
+                val innerWidth = targetWidth - (3 * padding)
+                val colWidth = innerWidth / 2
                 val firstBmp = processedBitmaps[0]
                 val scaledHeight = (colWidth.toDouble() / firstBmp.width * firstBmp.height).toInt()
-                val totalHeight = 4 * scaledHeight
+                val totalHeight = (4 * scaledHeight) + (5 * padding)
                 
                 val result = Bitmap.createBitmap(targetWidth, totalHeight, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(result)
@@ -206,7 +239,9 @@ object BitmapProcessor {
                     val row = index / 2
                     val col = index % 2
                     val scaled = Bitmap.createScaledBitmap(bitmap, colWidth, scaledHeight, true)
-                    canvas.drawBitmap(scaled, (col * colWidth).toFloat(), (row * scaledHeight).toFloat(), null)
+                    val x = padding + (col * (colWidth + padding))
+                    val y = padding + (row * (scaledHeight + padding))
+                    canvas.drawBitmap(scaled, x.toFloat(), y.toFloat(), null)
                 }
                 result
             }
@@ -220,6 +255,15 @@ object BitmapProcessor {
                 val canvas = Canvas(result)
                 canvas.drawColor(Color.WHITE)
                 
+                // Draw background if present
+                if (context != null && !customTemplate.backgroundUri.isNullOrEmpty()) {
+                    val bgBitmap = com.ohshootstudio.resibooth.util.ImageUtils.decodeBitmapFromUri(context, customTemplate.backgroundUri, targetWidth)
+                    if (bgBitmap != null) {
+                        val scaledBg = Bitmap.createScaledBitmap(bgBitmap, targetWidth, totalHeight, true)
+                        canvas.drawBitmap(scaledBg, 0f, 0f, null)
+                    }
+                }
+                
                 customTemplate.frames.forEachIndexed { index, frame ->
                     if (index < processedBitmaps.size) {
                         val bmp = processedBitmaps[index]
@@ -229,10 +273,27 @@ object BitmapProcessor {
                         val pixelW = (frame.width * targetWidth).toInt()
                         val pixelH = (frame.height * totalHeight).toInt()
                         
-                        val scaled = Bitmap.createScaledBitmap(bmp, pixelW, pixelH, true)
+                        val frameAspectRatio = pixelW.toFloat() / pixelH.toFloat()
+                        val croppedBmp = com.ohshootstudio.resibooth.util.ImageUtils.cropToAspectRatio(bmp, frameAspectRatio)
+                        
+                        val scaled = Bitmap.createScaledBitmap(croppedBmp, pixelW, pixelH, true)
                         canvas.drawBitmap(scaled, pixelX.toFloat(), pixelY.toFloat(), null)
+                        
+                        if (croppedBmp != bmp) {
+                            croppedBmp.recycle()
+                        }
                     }
                 }
+                
+                // Draw overlay if present
+                if (context != null && !customTemplate.overlayUri.isNullOrEmpty()) {
+                    val overlayBitmap = com.ohshootstudio.resibooth.util.ImageUtils.decodeBitmapFromUri(context, customTemplate.overlayUri, targetWidth)
+                    if (overlayBitmap != null) {
+                        val scaledOverlay = Bitmap.createScaledBitmap(overlayBitmap, targetWidth, totalHeight, true)
+                        canvas.drawBitmap(scaledOverlay, 0f, 0f, null)
+                    }
+                }
+                
                 result
             }
         }

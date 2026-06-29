@@ -103,6 +103,8 @@ fun CaptureScreen(
     var isCapturing by remember { mutableStateOf(false) }
     var triggerFlash by remember { mutableStateOf(false) }
     var uvcTextureView by remember { mutableStateOf<android.view.TextureView?>(null) }
+    
+    var autoCaptureTrigger by remember { mutableIntStateOf(0) }
 
     val currentFlashAlpha by animateFloatAsState(
         targetValue = if (triggerFlash) 1f else 0f,
@@ -126,6 +128,75 @@ fun CaptureScreen(
                         }
                     }
                 )
+            }
+        }
+    }
+
+    LaunchedEffect(autoCaptureTrigger) {
+        if (autoCaptureTrigger > 0 && !isCapturing && currentPhotoIndex < maxPhotos) {
+            isCapturing = true
+            // Countdown 3, 2, 1
+            for (i in 3 downTo 1) {
+                if (!isActive) return@LaunchedEffect
+                countdownValue = i
+                if (soundsEnabled) {
+                    soundPlayer.playTick()
+                }
+                delay(1000)
+            }
+            if (!isActive) return@LaunchedEffect
+            countdownValue = 0
+            
+            try {
+                // Flash Effect & Max Brightness
+                activity?.window?.attributes = activity?.window?.attributes?.apply {
+                    screenBrightness = 1f
+                }
+                triggerFlash = true
+                
+                if (soundsEnabled) {
+                    soundPlayer.playShutter()
+                }
+                
+                if (cameraLensFacing == 2) {
+                    var finalBitmap = uvcTextureView?.bitmap
+                    if (finalBitmap != null) {
+                        if (squareMode) {
+                            val width = finalBitmap.width
+                            val height = finalBitmap.height
+                            val minDim = minOf(width, height)
+                            val xOffset = (width - minDim) / 2
+                            val yOffset = (height - minDim) / 2
+                            val cropped = Bitmap.createBitmap(finalBitmap, xOffset, yOffset, minDim, minDim)
+                            if (cropped != finalBitmap) {
+                                finalBitmap.recycle()
+                            }
+                            finalBitmap = cropped
+                        }
+                        onPhotoCaptured(finalBitmap)
+                    }
+                    isCapturing = false
+                    if (currentPhotoIndex + 1 >= maxPhotos) {
+                        onAllPhotosCaptured()
+                    } else {
+                        autoCaptureTrigger++
+                    }
+                } else {
+                    cameraManager.takePhoto(squareMode = squareMode) { bitmap ->
+                        onPhotoCaptured(bitmap)
+                        isCapturing = false
+                        if (currentPhotoIndex + 1 >= maxPhotos) {
+                            onAllPhotosCaptured()
+                        } else {
+                            autoCaptureTrigger++
+                        }
+                    }
+                }
+            } finally {
+                // Restore brightness
+                activity?.window?.attributes = activity?.window?.attributes?.apply {
+                    screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                }
             }
         }
     }
@@ -208,69 +279,10 @@ fun CaptureScreen(
                 .padding(bottom = 52.dp) // Adjusted for ring light
         ) {
             ShutterButton(
-                enabled = !isCapturing,
+                enabled = !isCapturing && autoCaptureTrigger == 0,
                 onClick = {
-                    scope.launch {
-                        isCapturing = true
-                        // Countdown 3, 2, 1
-                        for (i in 3 downTo 1) {
-                            if (!isActive) return@launch
-                            countdownValue = i
-                            if (soundsEnabled) {
-                                soundPlayer.playTick()
-                            }
-                            delay(1000)
-                        }
-                        if (!isActive) return@launch
-                        countdownValue = 0
-                        
-                        try {
-                            // Flash Effect & Max Brightness
-                            activity?.window?.attributes = activity?.window?.attributes?.apply {
-                                screenBrightness = 1f
-                            }
-                            triggerFlash = true
-                            
-                            if (soundsEnabled) {
-                                soundPlayer.playShutter()
-                            }
-                            
-                            if (cameraLensFacing == 2) {
-                                var finalBitmap = uvcTextureView?.bitmap
-                                if (finalBitmap != null) {
-                                    if (squareMode) {
-                                        val width = finalBitmap.width
-                                        val height = finalBitmap.height
-                                        val minDim = minOf(width, height)
-                                        val xOffset = (width - minDim) / 2
-                                        val yOffset = (height - minDim) / 2
-                                        val cropped = Bitmap.createBitmap(finalBitmap, xOffset, yOffset, minDim, minDim)
-                                        if (cropped != finalBitmap) {
-                                            finalBitmap.recycle()
-                                        }
-                                        finalBitmap = cropped
-                                    }
-                                    onPhotoCaptured(finalBitmap)
-                                }
-                                isCapturing = false
-                                if (currentPhotoIndex + 1 >= maxPhotos) {
-                                    onAllPhotosCaptured()
-                                }
-                            } else {
-                                cameraManager.takePhoto(squareMode = squareMode) { bitmap ->
-                                    onPhotoCaptured(bitmap)
-                                    isCapturing = false
-                                    if (currentPhotoIndex + 1 >= maxPhotos) {
-                                        onAllPhotosCaptured()
-                                    }
-                                }
-                            }
-                        } finally {
-                            // Restore brightness
-                            activity?.window?.attributes = activity?.window?.attributes?.apply {
-                                screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-                            }
-                        }
+                    if (autoCaptureTrigger == 0) {
+                        autoCaptureTrigger++
                     }
                 }
             )
